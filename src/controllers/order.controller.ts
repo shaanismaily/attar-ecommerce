@@ -1,6 +1,6 @@
 import { Order } from "../models/order.model.js";
 import { Product } from "../models/product.model.js";
-import { User } from "../models/user.model.js";
+import { Address } from "../models/address.model.js";
 import { Variant } from "../models/variant.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -162,24 +162,82 @@ const cancelOrder = asyncHandler( async(req, res) => {
 // Admin controllers
 
 const getAllOrders = asyncHandler( async(req, res) => {
-    const { page=1, limit=10, query, sortBy, sortType } = req.query
+    const { page=1, limit=10, query, sortType } = req.query
 
-    const filter: Record<string, unknown> = {}
+    const pageNumber = Math.max(1, Number(page) || 1)
+    const limitNumber = Math.min(50, Math.max(1, Number(limit) || 10))
+
+    const sortOrder: 1 | -1 = sortType === "asc" ? 1 : -1
+    
+    const pipeline = [];
 
     if (query) {
-        filter.$or = [
-            { orderStatus: { $regex: query, $options: "i" } },
-            { paymentStatus: { $regex: query, $options: "i" } }
-        ]
+        pipeline.push({
+            $match: {
+                $or: [
+                    { "orderItems.productName": { $regex: query, $options: "i" } },
+                    { "orderItems.volume": { $regex: query, $options: "i" } },
+                    { orderStatus: { $regex: query, $options: "i" } },
+                    { paymentStatus: { $regex: query, $options: "i" } }
+                ]
+            }
+        });
     }
 
-    // TODO: Search using mongoose aggregation pipelines
+    pipeline.push(
+        { $sort: { createdAt: sortOrder } },
+        { $skip: (pageNumber - 1) * limitNumber },
+        { $limit: limitNumber }
+    );
+
+    const orders = await Order.aggregate(pipeline);
+
+    return res.status(200).json(
+        new ApiResponse(200, orders, "Orders fetched successfully")
+    )
 })
 
+const updateOrderStatus = asyncHandler( async(req, res) => {
+    const { orderId } = req.params
+    const { updatedStatus } = req.body
+
+    const allowedStatuses = ["pending", "packed", "shipped", "delivered", "cancelled"];
+    if (!allowedStatuses.includes(updatedStatus)) {
+        throw new ApiError(400, "Invalid order status");
+    }
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+        throw new ApiError(404, "Order not found");
+    }
+
+    if (["cancelled", "delivered"].includes(order.orderStatus)) {
+        throw new ApiError(400, "Order status cannot be updated");
+    }
+
+    const validTransitions: Record<any, string[]> = {
+        pending: ["packed", "cancelled"],
+        packed: ["shipped", "cancelled"],
+        shipped: ["delivered"],
+    };
+
+    if (!validTransitions[order.orderStatus]?.includes(updatedStatus)) {
+        throw new ApiError(400, `Cannot change status from ${order.orderStatus} to ${updatedStatus}`);
+    }
+
+    order.orderStatus = updatedStatus
+    await order.save();
+
+    return res.status(200).json(
+        new ApiResponse(200, { orderStatus: order.orderStatus }, "Order status updated successfully")
+    )
+})
 
 export {
     createOrder,
     getUserOrders,
     getOrder,
     cancelOrder,
+    getAllOrders,
+    updateOrderStatus
 }

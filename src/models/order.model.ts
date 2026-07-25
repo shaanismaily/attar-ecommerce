@@ -7,6 +7,9 @@ interface IOrder {
     paymentStatus: "pending" | "paid" | "failed" | "refunded";
     shippingAddress: Types.ObjectId;
     orderItems: IOrderItem[];
+
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 interface IOrderItem {
@@ -30,6 +33,18 @@ const orderItemSchema = new Schema<IOrderItem, Model<IOrderItem>>( {
     variant: {
         type: Schema.Types.ObjectId,
         ref: "Variant",
+        required: true
+    },
+    productName: {
+        type: String,
+        required: true
+    },
+    volume: {
+        type: String,
+        required: true
+    },
+    price: {
+        type: Number,
         required: true
     },
     quantity: {
