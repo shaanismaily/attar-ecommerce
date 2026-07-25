@@ -18,7 +18,7 @@ router.get("/products/:slug", getProduct);
 
 // Only admin can modify products
 router.post("/admin/products", verifyJWT, verifyAdmin, upload.array("images", 5), createProduct);
-router.patch("/admin/products/:id", verifyJWT, verifyAdmin, updateProduct);
-router.delete("/admin/products/:id", verifyJWT, verifyAdmin, deleteProduct);
+router.patch("/admin/products/:productId", verifyJWT, verifyAdmin, updateProduct);
+router.delete("/admin/products/:productId", verifyJWT, verifyAdmin, deleteProduct);
 
 export default router

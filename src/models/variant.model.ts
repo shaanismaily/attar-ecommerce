@@ -2,10 +2,13 @@ import mongoose, {Schema, Types, Model} from "mongoose";
 
 interface IVariant {
     product: Types.ObjectId;
-    volume: string | number;
+    volume: string;
     price: number;
     stock: number;
-    isAvailable: boolean
+    isAvailable: boolean;
+
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 const variantSchema = new Schema<IVariant, Model<IVariant>>({
@@ -15,7 +18,7 @@ const variantSchema = new Schema<IVariant, Model<IVariant>>({
         required: true
     },
     volume: {
-        type: Number,
+        type: String,
         required: true
     },
     price: {

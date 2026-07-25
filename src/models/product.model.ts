@@ -5,8 +5,11 @@ interface IProduct {
     slug: string;
     description: string;
     images: string[];
-    imagesPublicId: string[],
+    imagesPublicId: string[];
     category: Types.ObjectId;
+    
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 const productSchema = new Schema<IProduct, Model<IProduct>>( {

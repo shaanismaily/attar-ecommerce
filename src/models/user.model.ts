@@ -8,7 +8,10 @@ interface IUser {
   email: string;
   password: string;
   role: "admin" | "user";
-  refreshToken?: string
+  refreshToken?: string;
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 interface UserModel extends Model<IUser, {}, IUserMethods> {}
