@@ -1,4 +1,5 @@
 import mongoose, { Model, Schema, Types } from "mongoose";
+import slugify from "slugify";
 
 interface IProduct {
     name: string;
@@ -45,6 +46,15 @@ const productSchema = new Schema<IProduct, Model<IProduct>>( {
         required: true
     }
 }, {timestamps: true} )
+
+productSchema.pre("validate", function() {
+    if (this.isModified("name")) {
+        this.slug = slugify(this.name, {
+            lower: true,
+            strict: true
+        })
+    }
+})
 
 productSchema.index( { slug: 1}, { unique: true } );
 

@@ -24,7 +24,7 @@ interface IOrderItem {
 }
 
 
-const orderItemSchema = new Schema<IOrderItem, Model<IOrderItem>>( {
+const orderItemSchema = new Schema<IOrderItem>( {
     product: {
         type: Schema.Types.ObjectId,
         ref: "Product",
