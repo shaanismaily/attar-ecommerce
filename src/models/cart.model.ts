@@ -1,6 +1,7 @@
 import mongoose, { Schema, Types, Model } from "mongoose";
 
 interface ICartItem {
+    _id: Types.ObjectId;
     product: Types.ObjectId;
     variant: Types.ObjectId;
 
