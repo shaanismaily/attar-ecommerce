@@ -133,7 +133,7 @@ const removeCartItem = asyncHandler(async (req, res) => {
     const originalLength = cart.items.length;
 
     cart.items = cart.items.filter(
-        item => !item._id.equals(cartItemId as string)
+        item => !item._id!.equals(cartItemId as string)
     );
 
     if (cart.items.length === originalLength) {
@@ -165,7 +165,7 @@ const updateCartItem = asyncHandler(async (req, res) => {
     }
 
     const item = cart.items.find(item =>
-        item._id.equals(cartItemId as string)
+        item._id!.equals(cartItemId as string)
     );
 
     if (!item) {
