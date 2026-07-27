@@ -1,3 +1,4 @@
+import { Category } from "../models/category.model.js";
 import { Product } from "../models/product.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -5,9 +6,9 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 
 const createProduct = asyncHandler( async(req, res) => {
-    const { name, slug, description, category } = req.body
+    const { name, slug, description, categoryId } = req.body
 
-    if (!name || !slug || !description || !category) {
+    if (!name || !slug || !description) {
         throw new ApiError(400, "All fields are required");
     }
 
@@ -25,6 +26,11 @@ const createProduct = asyncHandler( async(req, res) => {
         throw new ApiError(409, "Product already exists");
     }
 
+    const category = await Category.findById(categoryId)
+    if (!category) {
+        throw new ApiError(404, "Category not found")
+    }
+
     const imageFiles = req.files as Express.Multer.File[];
 
     if (!imageFiles || imageFiles.length === 0) {
@@ -36,7 +42,6 @@ const createProduct = asyncHandler( async(req, res) => {
 
     for (const file of imageFiles) {
         const uploadedImage = await uploadOnCloudinary(file.path)
-        
         if (!uploadedImage) {
             throw new ApiError(400, "Image is required")
         }
@@ -49,7 +54,7 @@ const createProduct = asyncHandler( async(req, res) => {
         name,
         slug,
         description,
-        category,
+        category: categoryId,
         images: imageUrls,
         imagesPublicId: imagePublicIds
     })

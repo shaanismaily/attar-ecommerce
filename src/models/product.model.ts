@@ -56,8 +56,6 @@ productSchema.pre("validate", function() {
     }
 })
 
-productSchema.index( { slug: 1}, { unique: true } );
-
 productSchema.index( { category: 1} );
 
 
