@@ -16,9 +16,9 @@ router.use(verifyJWT)
 
 
 router.post("/orders", createOrder);
-router.get("/orders/user", getUserOrders);
+router.get("/orders/me", getUserOrders);
 router.get("/orders/:orderId", getOrder);
-router.put("/orders/:orderId/cancel", cancelOrder);
+router.patch("/orders/:orderId/cancel", cancelOrder);
 
 // Admin routes
 router.get("/admin/orders", verifyAdmin, getAllOrders)
