@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
+import slugify from "slugify";
 
 const createCategory = asyncHandler( async(req, res) => {
     const { name, description, isActive } = req.body
@@ -76,13 +77,21 @@ const updateCategory = asyncHandler(async (req, res) => {
     if (name !== undefined) {
         if (!name.trim()) throw new ApiError(400, "Category name cannot be empty");
 
+        const newSlug = slugify(name, {
+            lower: true,
+            strict: true
+        });
+
         const existingCategory = await Category.findOne({
-            name,
+            slug: newSlug,
             _id: { $ne: category._id }
         });
 
-        if (existingCategory) throw new ApiError(409, "Category already exists");
+        if (existingCategory) {
+            throw new ApiError(409, "A category with this name already exists");
+        }
 
+        // The pre("validate") hook regenerates the slug when this is saved.
         category.name = name;
     }
 
