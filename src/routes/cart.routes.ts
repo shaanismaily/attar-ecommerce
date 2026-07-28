@@ -14,10 +14,10 @@ router.use(verifyJWT)
 
 router
     .route("/")
-    .post(getCart)
+    .get(getCart)
     .delete(clearCart)
 
-router.route("/items").post(addItemToCart)
+router.post("/items", addItemToCart)
 
 router
     .route("/items/:cartItemId")
