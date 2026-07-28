@@ -4,23 +4,28 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
+import slugify from "slugify";
 
 const createProduct = asyncHandler( async(req, res) => {
-    const { name, slug, description, categoryId } = req.body
+    const { name, description, categoryId } = req.body
 
-    if (!name || !slug || !description) {
+    if (!name || !description) {
         throw new ApiError(400, "All fields are required");
     }
 
     if (
         !name.trim() ||
-        !slug.trim() ||
         !description.trim()
     ) {
         throw new ApiError(400, "Invalid input");
     }
 
-    const existedProduct = await Product.findOne({ slug });
+    const generatedSlug = slugify(name, {
+        lower: true,
+        strict: true
+    });
+
+    const existedProduct = await Product.findOne({ generatedSlug });
 
     if (existedProduct) {
         throw new ApiError(409, "Product already exists");
@@ -52,7 +57,6 @@ const createProduct = asyncHandler( async(req, res) => {
 
     const product = await Product.create({
         name,
-        slug,
         description,
         category: categoryId,
         images: imageUrls,
@@ -64,7 +68,7 @@ const createProduct = asyncHandler( async(req, res) => {
     }
 
     const createdProduct = await Product.findById(product._id)
-        .populate("category")
+        .populate("category", "name description image isActive slug")
 
     return res.status(201).json(
         new ApiResponse(201, createdProduct, "Product created successfully")
@@ -72,49 +76,44 @@ const createProduct = asyncHandler( async(req, res) => {
 })
 
 const updateProduct = asyncHandler( async(req, res) => {
-    const { name, description, slug, category } = req.body
+    const { name, description, category } = req.body
     const { productId } = req.params
 
-    if (!name && !description && !slug && !category) {
+    if (!name && !description && !category) {
         throw new ApiError(400, "At least one field is required")
     }
 
-    if (slug) {
-        const existedSlug = await Product.findOne({
-            slug,
-            _id: { $ne: productId }  // ne - Not Equal
+    const product = await Product.findById(productId);
+
+    if (!product) {
+        throw new ApiError(404, "Product not found");
+    }
+
+    if (name !== undefined) {
+        const newSlug = slugify(name, {
+            lower: true,
+            strict: true
         });
 
-        if (existedSlug) {
-            throw new ApiError(409, "Product with this slug already exists");
+        const existingProduct = await Product.findOne({
+            slug: newSlug,
+            _id: { $ne: product._id }
+        });
+
+        if (existingProduct) {
+            throw new ApiError(409, "A product with this name already exists");
         }
+
+        product.name = name; // pre("validate") regenerates product.slug
     }
 
-    const updateData: Partial<{
-    name: string;
-    description: string;
-    slug: string;
-    category: string;
-    }> = {};
+    if (description !== undefined) product.description = description;
+    if (category !== undefined) product.category = category;
 
-    if (name) updateData.name = name;
-    if (description) updateData.description = description;
-    if (slug) updateData.slug = slug;
-    if (category) updateData.category = category;
-
-    
-    const updatedProduct = await Product.findByIdAndUpdate(
-        productId,
-        updateData,
-        { new: true }
-    )
-
-    if (!updateProduct) {
-        throw new ApiError(404, "Product not found")
-    }
+    await product.save();
 
     return res.status(200).json(
-        new ApiResponse(200, updatedProduct, "Product updated successfully")
+        new ApiResponse(200, product, "Product updated successfully")
     )
 })
 
