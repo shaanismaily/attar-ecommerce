@@ -6,6 +6,7 @@ interface ICategory {
     slug: string;
     description: string;
     image: string;
+    imagePublicId: string;
     isActive: boolean;
 
     createdAt?: Date;
@@ -38,6 +39,7 @@ const categorySchema = new Schema<ICategory, Model<ICategory>>({
         match: /^https?:\/\/.+/,
         required: true
     },
+    imagePublicId: String,
     isActive: {
         type: Boolean,
         default: true
