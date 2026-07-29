@@ -9,7 +9,7 @@ import { Types } from "mongoose";
 
 const options = {
     httpOnly: true,
-    secure: true
+    secure: process.env.NODE_ENV === "production"
 }
 
 interface DecodedToken extends JwtPayload {
@@ -41,9 +41,9 @@ const generateAccessAndRefreshToken = async(userId: Types.ObjectId) => {
 }
 
 const registerUser = asyncHandler( async(req, res) => {
-    const { email, fullName, password, role, phone } = req.body
+    const { email, fullName, password, phone } = req.body
 
-    if ([email, password, fullName, role].some(field => field?.trim() === "")) {
+    if ([email, password, fullName].some(field => field?.trim() === "")) {
         throw new ApiError(400, "All fields are required")
     }
 
@@ -59,7 +59,7 @@ const registerUser = asyncHandler( async(req, res) => {
         fullName,
         email,
         password,
-        role,
+        role: "user",
         ...(phone && { phone })
     })
 
