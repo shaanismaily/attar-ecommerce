@@ -1,11 +1,18 @@
-
+import { BrowserRouter } from "react-router-dom"
+import Navbar from "./components/Navbar"
+import backgroundImage from "./assets/images/bg.avif"
 function App() {
 
-  return (
-    <>
-      <h1 className="bg-yellow-500">Welcome, Shaan Ismaily</h1>
-    </>
-  )
+ return (
+  <BrowserRouter>
+    <div
+      className="flex min-h-screen flex-col bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: `url(${backgroundImage})` }}
+    >
+      <Navbar />
+    </div>
+  </BrowserRouter>
+  );
 }
 
 export default App
