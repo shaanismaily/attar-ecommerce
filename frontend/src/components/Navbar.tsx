@@ -55,7 +55,7 @@ function Navbar() {
                 className="font-display text-2xl font-bold tracking-wide"
                 style={{ fontFamily: "var(--font-display)" }}
               >
-                NAQSH
+                SHAAN
               </span>
               <span
                 className="text-[0.55rem] tracking-[0.3em] uppercase"
