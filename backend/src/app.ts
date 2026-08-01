@@ -1,4 +1,4 @@
-import express from "express";
+import express, { type ErrorRequestHandler } from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 
@@ -26,5 +26,17 @@ app.use("/api/v1", productRouter)
 app.use("/api/v1", categoryRouter)
 app.use("/api/v1", orderRouter)
 app.use("/api/v1/cart", cartRouter)
+
+const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+  const statusCode = err.statusCode || 500;
+
+  res.status(statusCode).json({
+    success: false,
+    message: err.message || "Internal server error",
+    errors: err.errors || [],
+  });
+};
+
+app.use(errorHandler);
 
 export { app };
