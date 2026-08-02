@@ -46,7 +46,26 @@ const createCategory = asyncHandler( async(req, res) => {
 })
 
 const getAllCategories = asyncHandler(async (_, res) => {
-    const categories = await Category.find().sort({ createdAt: -1 });
+    const categories = await Category.aggregate([
+        {
+            $lookup: {
+                from: "products",
+                let: { categoryId: "$_id" },
+                pipeline: [
+                    { $match: { $expr: { $eq: ["$category", "$$categoryId"] } } },
+                    { $count: "count" }
+                ],
+                as: "productStats"
+            }
+        },
+        {
+            $set: {
+                productCount: { $ifNull: [{ $arrayElemAt: ["$productStats.count", 0] }, 0] }
+            }
+        },
+        { $project: { productStats: 0 } },
+        { $sort: { createdAt: -1 } }
+    ]);
 
     return res.status(200).json(
         new ApiResponse(200, categories, "All categories fetched successfully")
