@@ -8,6 +8,7 @@ export type Collection = {
     description: string;
     image: string;
     isActive: boolean;
+    productCount: number;
     createdAt: string;
     updatedAt: string;
 };
