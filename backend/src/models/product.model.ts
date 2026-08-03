@@ -5,7 +5,16 @@ interface IProduct {
     name: string;
     slug: string;
     description: string;
-    images: string[];
+    isFeatured: boolean;
+    isBestSeller: boolean;
+    isNewArrival: boolean;
+    isPublished: boolean;
+    images: [
+        {
+            url: string;
+            publicId: string
+        }
+    ];
     imagesPublicId: string[];
     category: Types.ObjectId;
     
@@ -31,15 +40,34 @@ const productSchema = new Schema<IProduct, Model<IProduct>>( {
         required: true,
         trim: true
     },
-    images: {
-        type: [String],
-        required: true,
-        validate: {
-            validator: (arr: string[]) => arr.length > 0,
-            message: "At least one image is required"
-        }
+    isFeatured: {
+        type: Boolean,
+        default: false,
     },
-    imagesPublicId: [String],
+    isBestSeller: {
+        type: Boolean,
+        default: false,
+    },
+    isNewArrival: {
+        type: Boolean,
+        default: false,
+    },
+    isPublished: {
+        type: Boolean,
+        default: true,
+    },
+    images: [
+        {
+            url: {
+                type: String,
+                required: true
+            },
+            publicId: {
+                type: String,
+                required: true
+            },
+        }
+    ],
     category: {
         type: Schema.Types.ObjectId,
         ref: "Category",
@@ -57,6 +85,9 @@ productSchema.pre("validate", function() {
 })
 
 productSchema.index( { category: 1} );
+productSchema.index( { isFeatured: 1} );
+productSchema.index( { isBestSeller: 1} );
+productSchema.index( { isNewArrival: 1} );
 
 
 export const Product = mongoose.model<IProduct>("Product", productSchema)
