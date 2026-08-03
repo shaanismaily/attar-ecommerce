@@ -9,13 +9,10 @@ interface IProduct {
     isBestSeller: boolean;
     isNewArrival: boolean;
     isPublished: boolean;
-    images: [
-        {
-            url: string;
-            publicId: string
-        }
-    ];
-    imagesPublicId: string[];
+    images: {
+        url: string;
+        publicId: string
+    }[];
     category: Types.ObjectId;
     
     createdAt?: Date;

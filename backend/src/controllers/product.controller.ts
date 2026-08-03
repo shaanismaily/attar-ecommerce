@@ -90,7 +90,7 @@ const createProduct = asyncHandler( async(req, res) => {
     }
 
     const createdProduct = await Product.findById(product._id)
-        .populate("category", "name description image isActive slug")
+        .populate("category", "name slug")
 
     return res.status(201).json(
         new ApiResponse(201, createdProduct, "Product created successfully")
@@ -175,8 +175,8 @@ const deleteProduct = asyncHandler( async(req, res) => {
         throw new ApiError(404, "Product not found")
     }
 
-    for (const publicId of deletedProduct.imagesPublicId) {
-        deleteFromCloudinary(publicId)
+    for (const publicId of deletedProduct.images) {
+        deleteFromCloudinary(publicId.publicId)
     }
 
     return res.status(200).json(
@@ -223,7 +223,7 @@ const getProducts = asyncHandler( async(req, res) => {
 
     const [products, totalProducts] = await Promise.all([
         Product.find(filter)
-                    .populate("category")
+                    .populate("category", "name slug")
                     .sort({ [sortField]: order })
                     .skip((pageNumber -1) * limitNumber)
                     .limit(limitNumber),
@@ -251,7 +251,7 @@ const getProduct = asyncHandler( async(req, res) => {
     }
 
     const product = await Product.findOne({ slug })
-        .populate("category")
+        .populate("category", "name slug")
         .lean()
 
     if (!product) {
