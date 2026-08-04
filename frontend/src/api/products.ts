@@ -6,6 +6,24 @@ export type Category = {
   name: string;
   slug: string;
 };
+
+export type ProductListResponse = {
+  data: {
+    products: Product[];
+  }
+    page: number;
+    limit: number;
+    totalProducts: number;
+    totalPages: number;
+};
+
+export type ApiResponse = {
+  statusCode: number;
+  data: Product;
+  message: string;
+  success: boolean;
+};
+
 export type Product = {
   _id: string;
   name: string;
@@ -23,28 +41,24 @@ export type Product = {
 
   createdAt: string;
   updatedAt: string;
+
+  relatedProducts?: Product[]
 };
 
-type ApiResponse<T> = {
-    statusCode: number;
-    data: T;
-    message: string;
-    success: boolean;
-};
 
 export const getProducts = (
   params?: Record<string, unknown>,
   signal?: AbortSignal,
 ) => {
-  return client.get<ApiResponse<Product[]>>("/products", {
+  return client.get<ProductListResponse>("/products", {
     params,
     signal,
   });
 };
 
 export const getProduct = () => {
-  return client.get<ApiResponse<Product>>("/products/:slug");
+  return client.get<ApiResponse>("/products/:slug");
 };
 
 export const getFeaturedProduct = (config?: AxiosRequestConfig) =>
-    client.get<ApiResponse<Product>>("/products/featured", config);
+    client.get<ApiResponse>("/products/featured", config);
