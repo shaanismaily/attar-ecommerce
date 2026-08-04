@@ -31,10 +31,9 @@ export default function useProducts(params?: ProductQueryParams) {
         setError(null);
 
         try {
-            const response = await getProducts({ params, signal });
-
+            const response = await getProducts(params, signal);
             if (requestId === latestRequestId.current) {
-                setProducts(response.data.data)
+                setProducts(response.data.data.products)
             }
         } catch (error) {
             if (axios.isAxiosError(error) && error.code === "ERR_CANCELED") {
