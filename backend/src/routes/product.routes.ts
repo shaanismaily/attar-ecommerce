@@ -15,8 +15,8 @@ const router = Router();
 
 // Anyone can view products
 router.get("/products", getProducts);
+router.get("/products/featured", getFeaturedProduct);
 router.get("/products/:slug", getProduct);
-router.get("/products/featured", getFeaturedProduct)
 
 // Only admin can modify products
 router.post("/admin/products", verifyJWT, verifyAdmin, upload.array("images", 5), createProduct);
