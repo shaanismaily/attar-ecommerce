@@ -203,8 +203,20 @@ const getProducts = asyncHandler( async(req, res) => {
         ];
     }
 
-    if (category && mongoose.Types.ObjectId.isValid(category as string)) {
-        filter.category = category;
+    if (category) {
+        const categoryIds = (category as string).split(",");
+
+        const invalidCategory = categoryIds.some(
+            (id) => !mongoose.Types.ObjectId.isValid(id)
+        );
+
+        if (invalidCategory) {
+            throw new ApiError(400, "Invalid category ID");
+        }
+
+        filter.category = {
+            $in: categoryIds,
+        };
     }
 
     if (bestSeller === "true") {
