@@ -1,16 +1,15 @@
 import type { Product } from "../../api/products";
 
+type SortOption = "name" | "createdAt";
+
 type ToolbarProps = {
     products: Product[],
     setSidebarOpen: (val: boolean) => void,
-    sortBy: string,
-    setSortBy: (val: string) => boolean,
-    setPage: (val: number) => void
+    sortBy: SortOption,
+    setSortBy: (val: SortOption) => void,
 }
 
-type SortOption = "name" | "createdAt";
-
-function ShopToolbar({ products, setSidebarOpen, setSortBy, setPage, sortBy }: ToolbarProps) {
+function ShopToolbar({ products, setSidebarOpen, setSortBy, sortBy }: ToolbarProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 mb-8 pb-5 border-b border-[#e8e4d8]">
           <div className="flex items-center gap-3">
@@ -51,13 +50,12 @@ function ShopToolbar({ products, setSidebarOpen, setSortBy, setPage, sortBy }: T
               value={sortBy}
               onChange={(e) => {
                 setSortBy(e.target.value as SortOption);
-                setPage(1);
               }}
               className="border border-[#d0ccc0] px-3 py-2 text-sm text-[#444] bg-white outline-none focus:border-[#C9A227] cursor-pointer"
               style={{ fontFamily: "var(--font-sans)" }}
             >
-              <option value="price-asc">Price: Low to High</option>
-              <option value="price-desc">Price: High to Low</option>
+              <option value="name">Name</option>
+              <option value="createdAt">Newest</option>
             </select>
           </div>
         </div>
