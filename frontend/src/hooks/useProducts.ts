@@ -19,6 +19,8 @@ export default function useProducts(params?: ProductQueryParams) {
     const [products, setProducts] = useState<Product[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const [totalProducts, setTotalProducts] = useState(0);
+    const [totalPages, setTotalPages] = useState(0)
     const latestRequestId = useRef(0);
 
     const refetch = useCallback( async(signal?: AbortSignal) => {
@@ -34,6 +36,8 @@ export default function useProducts(params?: ProductQueryParams) {
             const response = await getProducts(params, signal);
             if (requestId === latestRequestId.current) {
                 setProducts(response.data.data.products)
+                setTotalProducts(response.data.totalProducts)
+                setTotalPages(response.data.totalPages)
             }
         } catch (error) {
             if (axios.isAxiosError(error) && error.code === "ERR_CANCELED") {
@@ -63,5 +67,5 @@ export default function useProducts(params?: ProductQueryParams) {
         return () => controller.abort();
     }, [refetch]);
 
-    return { products, error, loading, refetch };
+    return { products, totalPages, totalProducts, error, loading, refetch };
 }
