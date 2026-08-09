@@ -56,8 +56,8 @@ export const getProducts = (
   });
 };
 
-export const getProduct = () => {
-  return client.get<ApiResponse>("/products/:slug");
+export const getProduct = (slug: string) => {
+  return client.get<ApiResponse>(`/products/${slug}`);
 };
 
 export const getFeaturedProduct = (config?: AxiosRequestConfig) =>
