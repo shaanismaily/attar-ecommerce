@@ -1,8 +1,10 @@
 import mongoose, {Schema, Types, Model} from "mongoose";
 
+type VolumeType = 3 | 6 | 12
+
 interface IVariant {
     product: Types.ObjectId;
-    volume: string;
+    volume: VolumeType;
     price: number;
     stock: number;
     isAvailable: boolean;
@@ -18,7 +20,9 @@ const variantSchema = new Schema<IVariant, Model<IVariant>>({
         required: true
     },
     volume: {
-        type: String,
+        type: Number,
+        enum: [3 | 6 | 12],
+        default: 3,
         required: true
     },
     price: {
