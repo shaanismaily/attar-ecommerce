@@ -44,7 +44,7 @@ function ProductGrid({ products }: ProductGridProps) {
                         </svg> */}
                   </button>
                   <Link
-                    to={`/product/${product._id}`}
+                    to={`/product/${product.slug}`}
                     className="block overflow-hidden bg-[#f5f2ec] aspect-3/4"
                   >
                     <img
@@ -94,7 +94,7 @@ function ProductGrid({ products }: ProductGridProps) {
                         Add to Cart
                       </button>
                       <Link
-                        to={`/product/${product._id}`}
+                        to={`/product/${product.slug}`}
                         className="px-3 border border-[#d0ccc0] flex items-center justify-center hover:border-[#C9A227] transition-colors"
                       >
                         <svg
