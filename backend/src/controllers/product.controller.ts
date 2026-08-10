@@ -270,11 +270,38 @@ const getProduct = asyncHandler( async(req, res) => {
         throw new ApiError(404, "Product not found")
     }
 
-    const relatedProducts = await Product.find({
-        category: product.category,
-        _id: { $ne: product._id },
-    })
-    .limit(4);
+    const relatedProducts = await Product.aggregate([
+        {
+            $match: {
+                category: product.category._id,
+                _id: { $ne: product._id },
+            },
+        },
+        {
+            $lookup: {
+                from: "variants",
+                localField: "_id",
+                foreignField: "product",
+                as: "variants",
+            },
+        },
+        {
+            $addFields: {
+                startingPrice: { $min: "$variants.price" },
+            },
+        },
+        {
+            $project: {
+                name: 1,
+                slug: 1,
+                images: 1,
+                startingPrice: 1,
+            },
+        },
+        {
+            $limit: 4,
+        },
+    ]);
 
     return res.status(200).json(
         new ApiResponse(200, {
