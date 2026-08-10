@@ -262,19 +262,54 @@ const getProduct = asyncHandler( async(req, res) => {
         throw new ApiError(400, "Slug is required");
     }
 
-    const product = await Product.findOne({ slug })
-        .populate("category", "name slug")
-        .lean()
+    const product = await Product.aggregate([
+        {
+            $match: { slug }
+        },
+        {
+            $lookup: {
+                from: "categories",
+                localField: "category",
+                foreignField: "_id",
+                as: "category"
+            }
+        },
+        {
+            $unwind: "$category"
+        },
+        {
+            $lookup: {
+                from: "variants",
+                localField: "_id",
+                foreignField: "product",
+                as: "variants"
+            }
+        },
+        {
+            $project: {
+                name: 1,
+                slug: 1,
+                images: 1,
+                description: 1,
+                category: {
+                    _id: 1,
+                    name: 1,
+                    slug: 1
+                },
+                variants: 1
+            }
+        }
+    ])
 
-    if (!product) {
+    if (product.length === 0) {
         throw new ApiError(404, "Product not found")
     }
 
     const relatedProducts = await Product.aggregate([
         {
             $match: {
-                category: product.category._id,
-                _id: { $ne: product._id },
+                category: product[0].category._id,
+                _id: { $ne: product[0]._id },
             },
         },
         {
@@ -288,14 +323,20 @@ const getProduct = asyncHandler( async(req, res) => {
         {
             $addFields: {
                 startingPrice: { $min: "$variants.price" },
+                category: {
+                    name: product[0].category.name,
+                    slug: product[0].category.slug
+                }
             },
         },
         {
             $project: {
+                _id: 1,
                 name: 1,
                 slug: 1,
                 images: 1,
                 startingPrice: 1,
+                category: 1,
             },
         },
         {
@@ -305,7 +346,7 @@ const getProduct = asyncHandler( async(req, res) => {
 
     return res.status(200).json(
         new ApiResponse(200, {
-            product,
+            product: product[0],
             relatedProducts
         }, "Product fetched successfully")
     )
