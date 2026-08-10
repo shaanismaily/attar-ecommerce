@@ -7,6 +7,16 @@ export type Category = {
   slug: string;
 };
 
+export type Variant = [
+  {
+    _id: string;
+    volume: number;
+    price: number;
+    stock: number;
+    isAvailable: boolean;
+  }
+]
+
 export type ProductListResponse = {
   data: {
     products: Product[];
@@ -17,9 +27,26 @@ export type ProductListResponse = {
     totalPages: number;
 };
 
-export type ApiResponse = {
+export type RelatedProductResponse = {
+  _id: string;
+  name: string;
+  slug: string;
+  images: [
+    {
+      url: string;
+      publicId: string;
+    }
+  ];
+  startingPrice: number;
+  category: {
+    name: string;
+    slug: string;
+  }
+}
+
+export type ApiResponse<T> = {
   statusCode: number;
-  data: Product;
+  data: T;
   message: string;
   success: boolean;
 };
@@ -38,11 +65,12 @@ export type Product = {
     publicId: string;
   }[];
   category: Category;
+  variants: Variant;
 
   createdAt: string;
   updatedAt: string;
 
-  relatedProducts?: Product[]
+  relatedProducts?: RelatedProductResponse[]
 };
 
 
@@ -57,8 +85,8 @@ export const getProducts = (
 };
 
 export const getProduct = (slug: string) => {
-  return client.get<ApiResponse>(`/products/${slug}`);
+  return client.get<ApiResponse<Product>>(`/products/${slug}`);
 };
 
 export const getFeaturedProduct = (config?: AxiosRequestConfig) =>
-    client.get<ApiResponse>("/products/featured", config);
+    client.get<ApiResponse<Product>>("/products/featured", config);
