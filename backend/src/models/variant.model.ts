@@ -21,7 +21,7 @@ const variantSchema = new Schema<IVariant, Model<IVariant>>({
     },
     volume: {
         type: Number,
-        enum: [3 | 6 | 12],
+        enum: [3 , 6, 12],
         default: 3,
         required: true
     },
