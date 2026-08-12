@@ -1,37 +1,46 @@
 import axios from "axios";
-import { getProduct, type Product } from "../api/products";
+import { getProduct, type Product, type RelatedProductResponse } from "../api/products";
 import { useCallback, useEffect, useState } from "react";
 
-function useProduct(slug: string) {
-    const [product, setProduct] = useState<Product | null>(null)
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
-    
-    const refetch = useCallback( async() => {
-        try {
-            setLoading(true);
-            setError("");
-    
-            const response = await getProduct(slug);
-            setProduct(response.data.data);
+function useProduct(slug: string | undefined) {
+  const [product, setProduct] = useState<Product | null>(null);
+  const [relatedProducts, setRelatedProducts] = useState<RelatedProductResponse[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-        } catch (error) {
-            if (axios.isAxiosError(error)) {
-                setError(error.response?.data?.message ?? error.message)
-            } else {
-                setError("Could not load product")
-            }
-        } finally {
-            setLoading(false);
-        }
+  const refetch = useCallback(async () => {
+    if (!slug) return;
 
-    }, [slug])
+    try {
+      setLoading(true);
+      setError("");
 
-    useEffect(() => {
-        refetch()
-    }, [refetch]);
+      const response = await getProduct(slug);
 
-    return {product, error, loading, refetch}
+      setProduct(response.data.data.product);
+      setRelatedProducts(response.data.data.relatedProducts);
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        setError(error.response?.data?.message ?? error.message);
+      } else {
+        setError("Could not load product");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [slug]);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  return {
+    product,
+    relatedProducts,
+    error,
+    loading,
+    refetch,
+  };
 }
 
-export default useProduct
+export default useProduct;

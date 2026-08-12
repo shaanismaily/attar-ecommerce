@@ -7,49 +7,13 @@ export type Category = {
   slug: string;
 };
 
-export type Variant = [
-  {
-    _id: string;
-    volume: number;
-    price: number;
-    stock: number;
-    isAvailable: boolean;
-  }
-]
-
-export type ProductListResponse = {
-  data: {
-    products: Product[];
-  }
-    page: number;
-    limit: number;
-    totalProducts: number;
-    totalPages: number;
-};
-
-export type RelatedProductResponse = {
+export type Variant = {
   _id: string;
-  name: string;
-  slug: string;
-  images: [
-    {
-      url: string;
-      publicId: string;
-    }
-  ];
-  startingPrice: number;
-  category: {
-    name: string;
-    slug: string;
-  }
-}
-
-export type ApiResponse<T> = {
-  statusCode: number;
-  data: T;
-  message: string;
-  success: boolean;
-};
+  volume: number;
+  price: number;
+  stock: number;
+  isAvailable: boolean;
+}[];
 
 export type Product = {
   _id: string;
@@ -66,13 +30,46 @@ export type Product = {
   }[];
   category: Category;
   variants: Variant;
-
   createdAt: string;
   updatedAt: string;
-
-  relatedProducts?: RelatedProductResponse[]
 };
 
+export type RelatedProductResponse = {
+  _id: string;
+  name: string;
+  slug: string;
+  images: {
+    url: string;
+    publicId: string;
+  }[];
+  startingPrice: number;
+  category: {
+    name: string;
+    slug: string;
+  };
+};
+
+export type ProductListResponse = {
+  data: {
+    products: Product[];
+  };
+  page: number;
+  limit: number;
+  totalProducts: number;
+  totalPages: number;
+};
+
+export type ProductDetailResponse = {
+  product: Product;
+  relatedProducts: RelatedProductResponse[];
+};
+
+export type ApiResponse<T> = {
+  statusCode: number;
+  data: T;
+  message: string;
+  success: boolean;
+};
 
 export const getProducts = (
   params?: Record<string, unknown>,
@@ -85,8 +82,10 @@ export const getProducts = (
 };
 
 export const getProduct = (slug: string) => {
-  return client.get<ApiResponse<Product>>(`/products/${slug}`);
+  return client.get<ApiResponse<ProductDetailResponse>>(
+    `/products/${slug}`,
+  );
 };
 
 export const getFeaturedProduct = (config?: AxiosRequestConfig) =>
-    client.get<ApiResponse<Product>>("/products/featured", config);
+  client.get<ApiResponse<Product>>("/products/featured", config);
