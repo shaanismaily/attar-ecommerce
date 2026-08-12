@@ -71,7 +71,18 @@ const addItemToCart = asyncHandler( async(req, res) => {
                 }
             ]
         })
-        
+
+        await cart.populate([
+            {
+                path: "items.product",
+                select: "name slug images"
+            },
+            {
+                path: "items.variant",
+                select: "volume price stock"
+            }
+        ]);
+                
         return res.status(201).json(
             new ApiResponse(201, cart, "User cart created successfully")
         )
@@ -99,8 +110,8 @@ const addItemToCart = asyncHandler( async(req, res) => {
     }
 
     await userCart.save();
-    await userCart.populate("items.product");
-    await userCart.populate("items.variant");
+    await userCart.populate("items.product", "name slug images");
+    await userCart.populate("items.variant", "volume price stock");
 
     return res.status(200).json(
         new ApiResponse(200, userCart, "User cart updated successfully")
@@ -142,8 +153,8 @@ const removeCartItem = asyncHandler(async (req, res) => {
 
     await cart.save();
 
-    await cart.populate("items.product");
-    await cart.populate("items.variant");
+    await cart.populate("items.product", "name slug images");
+    await cart.populate("items.variant", "volume price stock");
 
     return res.status(200).json(
         new ApiResponse(200, cart, "Cart item removed successfully")
@@ -190,8 +201,8 @@ const updateCartItem = asyncHandler(async (req, res) => {
 
     await cart.save();
 
-    await cart.populate("items.product");
-    await cart.populate("items.variant");
+    await cart.populate("items.product", "name slug images");
+    await cart.populate("items.variant", "volume price stock");
 
     return res.status(200).json(
         new ApiResponse(200, cart, "Cart item updated successfully")

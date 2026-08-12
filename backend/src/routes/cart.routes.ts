@@ -17,7 +17,7 @@ router
     .get(getCart)
     .delete(clearCart)
 
-router.post("/items", addItemToCart)
+router.post("/items/:productId", addItemToCart)
 
 router
     .route("/items/:cartItemId")
