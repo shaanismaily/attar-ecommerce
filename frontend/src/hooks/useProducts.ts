@@ -34,10 +34,12 @@ export default function useProducts(params?: ProductQueryParams) {
 
         try {
             const response = await getProducts(params, signal);
+            const payload = response.data;
+
             if (requestId === latestRequestId.current) {
-                setProducts(response.data.data.products)
-                setTotalProducts(response.data.totalProducts)
-                setTotalPages(response.data.totalPages)
+                setProducts(payload.products)
+                setTotalProducts(payload.totalProducts)
+                setTotalPages(payload.totalPages)
             }
         } catch (error) {
             if (axios.isAxiosError(error) && error.code === "ERR_CANCELED") {
