@@ -1,11 +1,31 @@
 import { useCallback, useEffect, useState } from "react";
-import { getUserCart, type Cart } from "../api/cart";
+import { addItemToCart as addItemToCartApi, getUserCart, type Cart } from "../api/cart";
 import axios from "axios";
+import { useSelector } from "react-redux";
+import type { RootState } from "../store/store";
+
+type addItemProps = {
+    quantity: number;
+    volume: number;
+}
 
 function useCart() {
     const [cart, setCart] = useState<Cart | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+
+    const authStatus = useSelector((state: RootState) => state.auth.status)
+
+    const getGuestCart = (): Cart | null => {
+        const stored = localStorage.getItem("cartItems")
+
+        return stored ? JSON.parse(stored) : null;
+    }
+
+    const getDatabaseCart = async (signal?: AbortSignal): Promise<Cart> => {
+        const response = await getUserCart(signal)
+        return response.data.data
+    }
 
     const refetch = useCallback(async (signal?: AbortSignal) => {
         if (signal?.aborted) return;
@@ -14,11 +34,15 @@ function useCart() {
         setError("");
 
         try {
-            const response = await getUserCart(signal);
+
+            const cartData = authStatus
+            ? await getDatabaseCart(signal)
+            : getGuestCart();
 
             if (signal?.aborted) return;
 
-            setCart(response.data.data);
+            setCart(cartData);
+
         } catch (error) {
             if (axios.isCancel(error)) {
                 return;
@@ -40,7 +64,7 @@ function useCart() {
                 setLoading(false);
             }
         }
-    }, []);
+    }, [authStatus]);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -52,11 +76,36 @@ function useCart() {
         };
     }, [refetch]);
 
+    
+    const addItemToCart = async (
+        data: addItemProps,
+        productId: string
+    ) => {
+        if (authStatus) {
+            await addItemToCartApi(data, productId);
+        } else {
+            const existingCart = JSON.parse(
+                localStorage.getItem("cartItems") || "[]"
+            );
+
+            existingCart.push({
+                productId,
+                ...data
+            });
+
+            localStorage.setItem(
+                "cartItems",
+                JSON.stringify(existingCart)
+            );
+        }
+    };
+
     return {
         cart,
         error,
         loading,
-        refetch
+        refetch,
+        addItemToCart
     };
 }
 
