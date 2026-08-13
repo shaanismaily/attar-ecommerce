@@ -204,15 +204,17 @@ const getProducts = asyncHandler( async(req, res) => {
     }
 
     if (category) {
-        const categoryIds = (category as string).split(",");
+        const categorySlugs = (category as string).split(",");
 
-        const invalidCategory = categoryIds.some(
-            (id) => !mongoose.Types.ObjectId.isValid(id)
+        const categories = await Promise.all(
+            categorySlugs.map(slug =>
+                Category.findOne({ slug }).select("_id").lean()
+            )
         );
 
-        if (invalidCategory) {
-            throw new ApiError(400, "Invalid category ID");
-        }
+        const categoryIds = categories
+            .filter(category => category !== null)    
+            .map(cat => cat._id);
 
         filter.category = {
             $in: categoryIds,
@@ -234,11 +236,56 @@ const getProducts = asyncHandler( async(req, res) => {
 
 
     const [products, totalProducts] = await Promise.all([
-        Product.find(filter)
-                    .populate("category", "name slug")
-                    .sort({ [sortField]: order })
-                    .skip((pageNumber -1) * limitNumber)
-                    .limit(limitNumber),
+        Product.aggregate([
+            { $match: filter },
+            {
+                $lookup: {
+                    from: "categories",
+                    localField: "category",
+                    foreignField: "_id",
+                    as: "category"
+                }
+            },
+            { $unwind: "$category" },
+            {
+                $lookup: {
+                    from: "variants",
+                    localField: "_id",
+                    foreignField: "product",
+                    as: "variants"
+                }
+            },
+            {
+                $sort: { [sortField]: order }
+            },
+            {
+                $skip: (pageNumber - 1) * limitNumber
+            },
+            {
+                $limit: limitNumber
+            },
+            {
+                $project: {
+                    _id: 1,
+                    name: 1,
+                    slug: 1,
+                    description: 1,
+                    isFeatured: 1,
+                    isBestSeller: 1,
+                    isNewArrival: 1,
+                    isPublished: 1,
+                    images: 1,
+                    category: {
+                        _id: 1,
+                        name: 1,
+                        slug: 1
+                    },
+                    variants: 1,
+                    createdAt: 1,
+                    updatedAt: 1
+                }
+            }
+        ]),
 
         Product.countDocuments(filter)
     ]);
