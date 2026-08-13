@@ -2,12 +2,14 @@ import axios from "axios"
 import { getVariants, type Variant } from "../api/variants"
 import { useCallback, useEffect, useState } from "react"
 
-function useVariants(productId: string) {
+function useVariants(productId?: string) {
     const [variants, setVariants] = useState<Variant[]>([])
     const [error, setError] = useState("")
     const [loading, setLoading] = useState(false)
 
     const refetch = useCallback( async() => {
+        if (!productId) return;
+        
         setError("")
         setLoading(true)
 

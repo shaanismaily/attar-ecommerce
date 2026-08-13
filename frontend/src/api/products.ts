@@ -13,7 +13,7 @@ export type Variant = {
   price: number;
   stock: number;
   isAvailable: boolean;
-}[];
+};
 
 export type Product = {
   _id: string;
@@ -29,7 +29,7 @@ export type Product = {
     publicId: string;
   }[];
   category: Category;
-  variants: Variant;
+  variants: Variant[];
   createdAt: string;
   updatedAt: string;
 };

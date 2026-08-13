@@ -1,11 +1,16 @@
 import { Link } from "react-router-dom";
 import type { Product } from "../../api/products";
+import { addToCart } from "../../store/cartSlice";
+import { useDispatch } from "react-redux";
 
 type ProductGridProps = {
     products: Product[]
 }
 
 function ProductGrid({ products }: ProductGridProps) {
+
+  const dispatch = useDispatch();
+  
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
             {products.map((product) => {
@@ -88,7 +93,16 @@ function ProductGrid({ products }: ProductGridProps) {
                     </div>
                     <div className="flex gap-2 mt-auto">
                       <button
-                        // onClick={() => addToCart(product, product.sizes[0])}
+                        onClick={() => {
+                          dispatch(
+                              addToCart({
+                                  product,
+                                  variant: product.variants[0],
+                                  price: product.variants[0].price,
+                                  quantity: 1
+                              })
+                          );
+                      }}
                         className="btn-primary flex-1"
                       >
                         Add to Cart
