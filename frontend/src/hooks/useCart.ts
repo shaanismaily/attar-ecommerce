@@ -1,112 +1,215 @@
 import { useCallback, useEffect, useState } from "react";
-import { addItemToCart as addItemToCartApi, getUserCart, type Cart } from "../api/cart";
+import {
+  addItemToCart as addItemToCartApi,
+  getUserCart,
+  updateCartItem,
+  type Cart,
+  removeCartItem,
+} from "../api/cart";
 import axios from "axios";
 import { useSelector } from "react-redux";
 import type { RootState } from "../store/store";
 
-type addItemProps = {
-    quantity: number;
-    volume: number;
-}
-
 function useCart() {
-    const [cart, setCart] = useState<Cart | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
+  const [cart, setCart] = useState<Cart | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [updatingItem, setUpdatingItem] = useState<string | null>(null);
 
-    const authStatus = useSelector((state: RootState) => state.auth.status)
+  const authStatus = useSelector((state: RootState) => state.auth.status);
 
-    const getGuestCart = (): Cart | null => {
-        const stored = localStorage.getItem("cartItems")
+  const getGuestCart = (): Cart | null => {
+    const stored = localStorage.getItem("cartItems");
 
-        return stored ? JSON.parse(stored) : null;
-    }
+    return stored ? JSON.parse(stored) : null;
+  };
 
-    const getDatabaseCart = async (signal?: AbortSignal): Promise<Cart> => {
-        const response = await getUserCart(signal)
-        return response.data.data
-    }
+  const getDatabaseCart = async (signal?: AbortSignal): Promise<Cart> => {
+    const response = await getUserCart(signal);
+    return response.data.data;
+  };
 
-    const refetch = useCallback(async (signal?: AbortSignal) => {
+  const refetch = useCallback(
+    async (signal?: AbortSignal) => {
+      if (signal?.aborted) return;
+
+      setLoading(true);
+      setError("");
+
+      try {
+        const cartData = authStatus
+          ? await getDatabaseCart(signal)
+          : getGuestCart();
+
         if (signal?.aborted) return;
 
-        setLoading(true);
+        setCart(cartData);
+      } catch (error) {
+        if (axios.isCancel(error)) {
+          return;
+        }
+
+        if (signal?.aborted) {
+          return;
+        }
+
+        if (axios.isAxiosError(error)) {
+          setError(error.response?.data?.message ?? error.message);
+        } else {
+          setError("Could not get Cart");
+        }
+      } finally {
+        if (!signal?.aborted) {
+          setLoading(false);
+        }
+      }
+    },
+    [authStatus],
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    void refetch(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
+  }, [refetch]);
+
+  const addItemToCart = async (quantity: number, variantId?: string) => {
+    if (authStatus) {
+      await addItemToCartApi(quantity, variantId);
+    } else {
+      const existingCart = JSON.parse(
+        localStorage.getItem("cartItems") || "[]",
+      );
+
+      existingCart.push({
+        quantity,
+        variantId,
+      });
+
+      localStorage.setItem("cartItems", JSON.stringify(existingCart));
+    }
+  };
+
+  const updateItemQuantity = async (id: string, quantity: number) => {
+    if (quantity < 1) {
+      return;
+    }
+
+    if (updatingItem) return;
+
+    if (!authStatus) {
+      try {
         setError("");
 
-        try {
+        const storedCart = localStorage.getItem("cartItems");
 
-            const cartData = authStatus
-            ? await getDatabaseCart(signal)
-            : getGuestCart();
-
-            if (signal?.aborted) return;
-
-            setCart(cartData);
-
-        } catch (error) {
-            if (axios.isCancel(error)) {
-                return;
-            }
-
-            if (signal?.aborted) {
-                return;
-            }
-
-            if (axios.isAxiosError(error)) {
-                setError(
-                    error.response?.data?.message ?? error.message
-                );
-            } else {
-                setError("Could not get Cart");
-            }
-        } finally {
-            if (!signal?.aborted) {
-                setLoading(false);
-            }
+        if (!storedCart) {
+          return;
         }
-    }, [authStatus]);
 
-    useEffect(() => {
-        const controller = new AbortController();
+        const existingCart = JSON.parse(storedCart);
 
-        void refetch(controller.signal);
+        const item = existingCart.find(
+          (item: { variantId: string; quantity: number }) =>
+            item.variantId === id,
+        );
 
-        return () => {
-            controller.abort();
-        };
-    }, [refetch]);
-
-    
-    const addItemToCart = async (
-        data: addItemProps,
-        productId: string
-    ) => {
-        if (authStatus) {
-            await addItemToCartApi(data, productId);
-        } else {
-            const existingCart = JSON.parse(
-                localStorage.getItem("cartItems") || "[]"
-            );
-
-            existingCart.push({
-                productId,
-                ...data
-            });
-
-            localStorage.setItem(
-                "cartItems",
-                JSON.stringify(existingCart)
-            );
+        if (!item) {
+          setError("Cart item not found");
+          return;
         }
-    };
 
-    return {
-        cart,
-        error,
-        loading,
-        refetch,
-        addItemToCart
-    };
+        item.quantity = quantity;
+
+        localStorage.setItem("cartItems", JSON.stringify(existingCart));
+
+        // Update React state
+        setCart(existingCart);
+      } catch (error) {
+        setError("Could not update cart item");
+      }
+
+      return;
+    }
+
+    try {
+      setUpdatingItem(id);
+
+      setLoading(true);
+      setError("");
+
+      const response = await updateCartItem(id, quantity);
+
+      setCart(response.data.data);
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        setError(error.response?.data?.message ?? error.message);
+      } else {
+        setError("Could not update cart item");
+      }
+    } finally {
+      setLoading(false);
+      setUpdatingItem(null);
+    }
+  };
+
+  const removeFromCart = async (id: string) => {
+
+    if (updatingItem) 
+        return;
+
+    if (!authStatus) {
+      const storedCart = localStorage.getItem("cartItems");
+
+      if (!storedCart) {
+        return;
+      }
+
+      const newItems = JSON.parse(storedCart).filter(
+        (item: { variantId: string; quantity: number }) =>
+          item.variantId !== id,
+      );
+
+      localStorage.setItem("cartItems", JSON.stringify(newItems))
+
+      setCart(newItems);
+      return;
+    }
+
+    try {
+        setUpdatingItem(id)
+        setLoading(true);
+        setError("")
+
+        const response = await removeCartItem(id);
+
+        setCart(response.data.data)
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        setError(error.response?.data?.message ?? error.message);
+      } else {
+        setError("Could not update cart item");
+      }
+    } finally {
+      setLoading(false);
+      setUpdatingItem(null);
+    }
+  };
+
+  return {
+    cart,
+    error,
+    loading,
+    refetch,
+    addItemToCart,
+    updateItemQuantity,
+    removeFromCart,
+    updatingItem,
+  };
 }
 
 export default useCart;

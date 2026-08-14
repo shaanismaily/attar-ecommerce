@@ -1,10 +1,5 @@
 import client from "./client";
 
-type addItemProps = {
-    quantity: number;
-    volume: number;
-}
-
 type Product = {
     name: string;
     slug: string;
@@ -25,7 +20,8 @@ export type Cart = {
         variant: Variant;
         quantity: number;
         priceAtAddition: number;
-    }[]
+    }[],
+    totalAmount: number;
 }
 
 type ApiResponse = {
@@ -35,8 +31,13 @@ type ApiResponse = {
     success: boolean
 }
 
-export const addItemToCart = (data: addItemProps, productId: string) => (
-    client.post<ApiResponse>(`/cart/items/${productId}`, data)
+type ItemsProps = {
+    variantId: string;
+    quantity: number;
+}
+
+export const addItemToCart = (quantity: number, variantId?: string) => (
+    client.post<ApiResponse>(`/cart/items/${variantId}`, quantity)
 )
 
 export const getUserCart = (signal?: AbortSignal) => (
@@ -53,4 +54,8 @@ export const updateCartItem = (cartItemId: string, quantity: number) => (
 
 export const removeCartItem = (cartItemId: string) => (
     client.delete<ApiResponse>(`/cart/items/${cartItemId}`)
+)
+
+export const mergeCart = (items: ItemsProps[]) => (
+    client.post<ApiResponse>("/cart/merge", items)
 )
