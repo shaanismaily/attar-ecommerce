@@ -91,13 +91,7 @@ function ProductGrid({ products }: ProductGridProps) {
               </div>
               <button
                 onClick={async () => {
-                  await addItemToCart(
-                    {
-                      quantity: 1,
-                      volume: product.variants[0].volume,
-                    },
-                    product._id,
-                  );
+                  await addItemToCart(1, product.variants[0]._id)
                 }}
                 className="btn-primary flex-1"
               >

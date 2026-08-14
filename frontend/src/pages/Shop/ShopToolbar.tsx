@@ -36,7 +36,7 @@ function ShopToolbar({ products, setSidebarOpen, setSortBy, sortBy }: ToolbarPro
               className="text-sm text-[#888]"
               style={{ fontFamily: "var(--font-sans)" }}
             >
-              {products.length} fragrances
+              {products?.length} fragrances
             </p>
           </div>
           <div className="flex items-center gap-3">
