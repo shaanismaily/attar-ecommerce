@@ -5,17 +5,19 @@ import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import ProductDetailSkeleton from "./ProductDetailSkeleton";
 import ProductDetailError from "./ProductDetailError";
+import useCart from "../../hooks/useCart";
 
 function ProductDetailPage() {
   const { slug } = useParams();
-  const { product, relatedProducts, error, loading, refetch } = useProduct(slug!);
+  const { product, relatedProducts, error, loading, refetch } = useProduct(slug);
+  const { addItemToCart } = useCart()
 
   const volumes = product?.variants?.map((variant) => variant.volume)
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState<number | null>(null);
   const [qty, setQty] = useState(1);
-  // const [addedToCart, setAddedToCart] = useState(false);
+  const [addedToCart, setAddedToCart] = useState(false);
   // const [activeTab, setActiveTab] = useState<"description" | "notes" | "reviews">("description");
   const [zoomPos, setZoomPos] = useState({ x: 0, y: 0 });
   const [zooming, setZooming] = useState(false);
@@ -28,7 +30,7 @@ function ProductDetailPage() {
     }
   }, [volumes, selectedSize]);
 
-  const selectedVariant = product?.variants?.find(
+  const selectedVariant = product!.variants.find(
     (variant) => variant.volume === selectedSize,
   );
 
@@ -273,10 +275,29 @@ function ProductDetailPage() {
 
             {/* CTA buttons */}
             <div className="flex flex-col sm:flex-row gap-3 mb-8">
-              <button onClick={handleBuyNow} className="btn-gold flex-1">
+              <button
+                onClick={ async() => {
+                  await addItemToCart(qty, selectedVariant?._id);
+                  setAddedToCart(true);
+                }}
+                className={`btn-primary flex-1 text-center transition-all ${
+                  addedToCart ? "bg-[#C9A227] border-[#C9A227]" : ""
+                }`}
+              >
+                <Link
+                  to={addedToCart ? "/cart": ""}
+                >
+                {addedToCart ? "Go to Cart" : "Add to Cart"}
+                </Link>
+              </button>
+              <button
+                onClick={handleBuyNow}
+                className="btn-gold flex-1"
+              >
                 Buy Now
               </button>
             </div>
+
 
             {/* Related Products */}
             {relatedProducts && (
