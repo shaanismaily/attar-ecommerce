@@ -4,7 +4,8 @@ import { addItemToCart,
     getCart,
     removeCartItem,
     updateCartItem,
-    clearCart
+    clearCart,
+    mergeCart
 } from "../controllers/cart.controller.js";
 
 
@@ -17,7 +18,9 @@ router
     .get(getCart)
     .delete(clearCart)
 
-router.post("/items/:productId", addItemToCart)
+router.post("/items/:variantId", addItemToCart)
+
+router.post("/merge", mergeCart)
 
 router
     .route("/items/:cartItemId")
