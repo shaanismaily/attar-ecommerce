@@ -50,9 +50,7 @@ export type RelatedProductResponse = {
 };
 
 export type ProductListResponse = {
-  data: {
-    products: Product[];
-  };
+  products: Product[];
   page: number;
   limit: number;
   totalProducts: number;
