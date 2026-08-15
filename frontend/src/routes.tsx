@@ -7,6 +7,7 @@ import {
     Shop,
     ProductDetailPage,
 } from "./pages";
+import Cart from "./pages/Cart";
 
 export const router = createBrowserRouter([
     {
@@ -15,7 +16,8 @@ export const router = createBrowserRouter([
         children: [
             {index: true, Component: Home},
             { path: "shop", Component: Shop },
-            { path: "product/:slug", Component: ProductDetailPage }
+            { path: "product/:slug", Component: ProductDetailPage },
+            { path: "cart", Component: Cart }
         ]
     },
     {
