@@ -1,12 +1,14 @@
 import client from "./client";
 
 type Product = {
+    _id: string;
     name: string;
     slug: string;
     images: string[]
 }
 
 type Variant = {
+    _id: string;
     volume: number;
     price: number;
     stock: number;
@@ -16,6 +18,7 @@ export type Cart = {
     _id: string;
     user: string;
     items: {
+        _id: string;
         product: Product;
         variant: Variant;
         quantity: number;
