@@ -4,7 +4,10 @@ type Product = {
     _id: string;
     name: string;
     slug: string;
-    images: string[]
+    images: {
+        url: string;
+        publicId: string;
+    }[]
 }
 
 type Variant = {
@@ -27,9 +30,14 @@ export type Cart = {
     totalAmount: number;
 }
 
+type CartResponseData = {
+    cart: Omit<Cart, "totalAmount">;
+    totalAmount: number;
+}
+
 type ApiResponse = {
     statusCode: number;
-    data: Cart;
+    data: CartResponseData;
     message: string;
     success: boolean
 }
@@ -40,7 +48,7 @@ type ItemsProps = {
 }
 
 export const addItemToCart = (quantity: number, variantId?: string) => (
-    client.post<ApiResponse>(`/cart/items/${variantId}`, quantity)
+    client.post<ApiResponse>(`/cart/items/${variantId}`, { quantity })
 )
 
 export const getUserCart = (signal?: AbortSignal) => (
@@ -52,7 +60,7 @@ export const clearCart = () => (
 )
 
 export const updateCartItem = (cartItemId: string, quantity: number) => (
-    client.patch<ApiResponse>(`/cart/items/${cartItemId}`, quantity)
+    client.patch<ApiResponse>(`/cart/items/${cartItemId}`, { quantity })
 )
 
 export const removeCartItem = (cartItemId: string) => (

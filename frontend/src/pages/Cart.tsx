@@ -12,7 +12,7 @@ function Cart() {
   
     const cartTotal = cart?.totalAmount ?? 0;
     const shipping = cartTotal >= 599 ? 0 : 60;
-    const tax = cartTotal * 0.03;
+    const tax = (cartTotal * 0.03).toFixed(2);
     const grandTotal = cartTotal + shipping + tax;
 
   if (loading && !cart) {
@@ -50,7 +50,7 @@ function Cart() {
     );
   }
 
-  if (!cart || cart.items.length === 0) {
+  if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
     return (
       <div className="min-h-screen bg-[#FAF8F3] pt-32 flex items-center justify-center px-6">
         <div className="text-center max-w-sm">
@@ -108,7 +108,7 @@ function Cart() {
                   {/* Image */}
                   <Link to={`/product/${item.product.slug}`} className="shrink-0">
                     <div className="w-24 h-32 overflow-hidden bg-[#f5f2ec]">
-                      <img src={item.product.images[0]} alt={item.product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      <img src={item.product.images[0]?.url} alt={item.product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                     </div>
                   </Link>
 
@@ -141,7 +141,7 @@ function Cart() {
 
                     <div className="flex flex-wrap items-center gap-3 mb-4">
                       <span className="text-xs border border-[#d0ccc0] px-2 py-0.5 text-[#666]" style={{ fontFamily: "var(--font-sans)" }}>
-                        {item.variant.volume}
+                        {item.variant.volume} ml
                       </span>
                     </div>
 

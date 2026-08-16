@@ -10,6 +10,11 @@ import axios from "axios";
 import { useSelector } from "react-redux";
 import type { RootState } from "../store/store";
 
+const normalizeCart = (data: {
+  cart: Omit<Cart, "totalAmount">;
+  totalAmount: number;
+}): Cart => ({ ...data.cart, totalAmount: data.totalAmount });
+
 function useCart() {
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(false);
@@ -26,7 +31,7 @@ function useCart() {
 
   const getDatabaseCart = async (signal?: AbortSignal): Promise<Cart> => {
     const response = await getUserCart(signal);
-    return response.data.data;
+    return normalizeCart(response.data.data);
   };
 
   const refetch = useCallback(
@@ -144,7 +149,7 @@ function useCart() {
 
       const response = await updateCartItem(id, quantity);
 
-      setCart(response.data.data);
+      setCart(normalizeCart(response.data.data));
     } catch (error) {
       if (axios.isAxiosError(error)) {
         setError(error.response?.data?.message ?? error.message);
@@ -187,7 +192,7 @@ function useCart() {
 
         const response = await removeCartItem(id);
 
-        setCart(response.data.data)
+        setCart(normalizeCart(response.data.data))
     } catch (error) {
       if (axios.isAxiosError(error)) {
         setError(error.response?.data?.message ?? error.message);
