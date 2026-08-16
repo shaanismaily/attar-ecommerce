@@ -131,6 +131,7 @@ function Cart() {
                         onClick={() => authStatus ? removeFromCart(item._id) : removeFromCart(item.variant._id)}
                         className="text-[#ccc] hover:text-red-400 transition-colors p-1"
                         aria-label="Remove"
+                        disabled={Boolean(updatingItem)}
                       >
                         <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
                           <path d="M18 6 6 18M6 6l12 12" />
@@ -162,6 +163,7 @@ function Cart() {
                         <button
                           onClick={() => authStatus ? updateItemQuantity(item._id, item.quantity + 1) : updateItemQuantity(item.variant._id, item.quantity + 1)}
                           className="w-9 h-9 flex items-center justify-center hover:bg-[#f5f2ec] transition-colors"
+                          disabled={Boolean(updatingItem)}
                         >
                           <svg width="12" height="12" fill="none" stroke="#666" strokeWidth="2" viewBox="0 0 24 24">
                             <line x1="12" y1="5" x2="12" y2="19" />
@@ -213,10 +215,10 @@ function Cart() {
               {shipping > 0 && (
                 <div className="bg-[#fdf9f0] border border-[#e8d88a] px-4 py-3 mb-5">
                   <p className="text-xs text-[#8a7000]" style={{ fontFamily: "var(--font-sans)" }}>
-                    Add ₹{(2999 - cartTotal).toLocaleString()} more for free shipping
+                    Add ₹{(599 - cartTotal).toLocaleString()} more for free shipping
                   </p>
                   <div className="h-1.5 bg-[#f0e8c0] mt-2 overflow-hidden">
-                    <div className="h-full bg-[#C9A227]" style={{ width: `${Math.min((cartTotal / 2999) * 100, 100)}%` }} />
+                    <div className="h-full bg-[#C9A227]" style={{ width: `${Math.min((cartTotal / 599) * 100, 100)}%` }} />
                   </div>
                 </div>
               )}
