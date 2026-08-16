@@ -73,7 +73,7 @@ export const getProducts = (
   params?: Record<string, unknown>,
   signal?: AbortSignal,
 ) => {
-  return client.get<ProductListResponse>("/products", {
+  return client.get<ApiResponse<ProductListResponse>>("/products", {
     params,
     signal,
   });
