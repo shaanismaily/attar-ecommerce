@@ -30,10 +30,6 @@ function ProductDetailPage() {
     }
   }, [volumes, selectedSize]);
 
-  const selectedVariant = product!.variants.find(
-    (variant) => variant.volume === selectedSize,
-  );
-
   if (loading) {
     return <ProductDetailSkeleton />;
   }
@@ -60,6 +56,10 @@ function ProductDetailPage() {
       </div>
     );
   }
+
+  const selectedVariant = product.variants.find(
+    (variant) => variant.volume === selectedSize,
+  );
 
   const allImages = product?.images?.map((image) => image.url);
 
