@@ -78,7 +78,9 @@ const createOrder = asyncHandler( async(req, res) => {
     );
 
     const createdOrder = await Order.findById(order._id)
-        .populate("shippingAddress");
+        .populate("shippingAddress")
+        .populate("orderItems.product", "name slug images")
+        .populate("orderItems.variant", "volume price stock")
 
     return res.status(201).json(
         new ApiResponse(201, createdOrder, "Order created successfully")
@@ -90,8 +92,8 @@ const getUserOrders = asyncHandler( async(req, res) => {
     const orders = await Order.find( { orderedBy: req.user?._id } )
                 .sort({ createdAt: -1 })
                 .populate("shippingAddress")
-                .populate("orderItems.product")
-                .populate("orderItems.variant")
+                .populate("orderItems.product", "name slug images")
+                .populate("orderItems.variant", "volume price stock")
 
     return res.status(200).json(new ApiResponse(
         200, orders, "Orders fetched successfully"
@@ -102,6 +104,9 @@ const getOrder = asyncHandler( async(req, res) => {
     const { orderId } = req.params
 
     const order = await Order.findById(orderId)
+        .populate("shippingAddress")
+        .populate("orderItems.product", "name slug images")
+        .populate("orderItems.variant", "volume price stock")
 
     if (!order) {
         throw new ApiError(404, "Order not found")
