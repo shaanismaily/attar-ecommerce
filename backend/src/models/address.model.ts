@@ -2,7 +2,8 @@ import mongoose, { Schema, Types, Model } from "mongoose";
 
 interface IAddress {
     user: Types.ObjectId;
-    fullName: string;
+    firstName: string;
+    lastName: string;
     phone: string;
     street: string;
     landmark: string;
@@ -24,9 +25,14 @@ const addressSchema = new Schema<IAddress, Model<IAddress>>({
         ref: "User",
         required: true,
     },
-    fullName: {
+    firstName: {
         type: String,
         required: true,
+        trim: true,
+        maxlength: 100
+    },
+    lastName: {
+        type: String,
         trim: true,
         maxlength: 100
     },
@@ -90,7 +96,15 @@ addressSchema.pre("save", async function() {
   }
 })
 
-addressSchema.index({ user: 1, isDefault: 1 });
+addressSchema.index(
+    { user: 1, isDefault: 1 },
+    {
+        unique: true,
+        partialFilterExpression: {
+            isDefault: true
+        }
+    }
+);
 addressSchema.index({ city: 1, state: 1 });
 
 export const Address = mongoose.model<IAddress>("Address", addressSchema)
