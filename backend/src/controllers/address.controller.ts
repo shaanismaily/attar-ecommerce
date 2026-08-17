@@ -61,6 +61,118 @@ const getAddresses = asyncHandler( async(req, res) => {
     )
 })
 
+const getAddressById = asyncHandler( async(req, res) => {
+    const { addressId } = req.params;
+
+    if (!mongoose.isValidObjectId(addressId)) {
+        throw new ApiError(400, "Invalid address ID");
+    }
+
+    const address = await Address.findOne({ _id: addressId, user: req.user._id })
+
+    if (!address) {
+        throw new ApiError(404, "Address not found")
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, address, "Address fetched successfully")
+    )
+})
+
+const updateAddress = asyncHandler(async (req, res) => {
+    const { addressId } = req.params;
+
+    if (!mongoose.isValidObjectId(addressId)) {
+        throw new ApiError(400, "Invalid address ID");
+    }
+
+    const {
+        street,
+        landmark,
+        city,
+        state,
+        addressType,
+        zipCode
+    } = req.body;
+
+    const updates: Record<string, string> = {};
+
+    if (street !== undefined) updates.street = street;
+    if (landmark !== undefined) updates.landmark = landmark;
+    if (city !== undefined) updates.city = city;
+    if (state !== undefined) updates.state = state;
+    if (addressType !== undefined) updates.addressType = addressType;
+    if (zipCode !== undefined) updates.zipCode = zipCode;
+
+    if (Object.keys(updates).length === 0) {
+        throw new ApiError(400, "At least one field is required");
+    }
+
+    const address = await Address.findOneAndUpdate(
+        {
+            _id: addressId,
+            user: req.user._id
+        },
+        {
+            $set: updates
+        },
+        {
+            new: true,
+            runValidators: true
+        }
+    );
+
+    if (!address) {
+        throw new ApiError(404, "Address not found");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            address,
+            "Address updated successfully"
+        )
+    );
+});
+
+const setDefaultAddress = asyncHandler(async (req, res) => {
+    const { addressId } = req.params;
+
+    if (!mongoose.isValidObjectId(addressId)) {
+        throw new ApiError(400, "Invalid address ID");
+    }
+
+    const address = await Address.findOne({
+        _id: addressId,
+        user: req.user._id
+    });
+
+    if (!address) {
+        throw new ApiError(404, "Address not found");
+    }
+
+    await Address.updateMany(
+        {
+            user: req.user._id,
+            _id: { $ne: addressId }
+        },
+        {
+            $set: { isDefault: false }
+        }
+    );
+
+    address.isDefault = true;
+    await address.save();
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            address,
+            "Default address updated successfully"
+        )
+    );
+});
+
 const deleteAddress = asyncHandler(async (req, res) => {
     const { addressId } = req.params;
 
@@ -89,5 +201,8 @@ const deleteAddress = asyncHandler(async (req, res) => {
 export {
     createAddress,
     getAddresses,
-    deleteAddress
+    deleteAddress,
+    updateAddress,
+    getAddressById,
+    setDefaultAddress
 }
