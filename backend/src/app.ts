@@ -21,6 +21,7 @@ import orderRouter from "./routes/order.routes.js"
 import cartRouter from "./routes/cart.routes.js"
 import variantRouter from "./routes/variant.routes.js"
 import healthcheckRouter from "./routes/healthcheck.route.js"
+import addressRouter from "./routes/address.routes.js"
 
 
 app.use("/api/v1", healthcheckRouter)
@@ -30,6 +31,7 @@ app.use("/api/v1", categoryRouter)
 app.use("/api/v1", orderRouter)
 app.use("/api/v1/cart", cartRouter)
 app.use("/api/v1", variantRouter)
+app.use("/api/v1/address", addressRouter)
 
 const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   const statusCode = err.statusCode || 500;
