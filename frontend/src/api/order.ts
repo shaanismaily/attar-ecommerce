@@ -1,11 +1,25 @@
 import client from "./client";
+import type { Address } from "./addresses";
+
+export type OrderStatus =
+    | "pending"
+    | "packed"
+    | "shipped"
+    | "delivered"
+    | "cancelled";
+
+export type PaymentStatus =
+    | "pending"
+    | "paid"
+    | "failed"
+    | "refunded";
 
 export type Order = {
     orderedBy: string;
     totalAmount: number;
-    orderStatus: "pending" | "packed" | "shipped" | "delivered" | "cancelled";
-    paymentStatus: "pending" | "paid" | "failed" | "refunded";
-    shippingAddress: string;
+    orderStatus: OrderStatus;
+    paymentStatus: PaymentStatus;
+    shippingAddress: Address;
     orderItems: {
         product: {
             _id: string;
@@ -13,7 +27,7 @@ export type Order = {
             slug: string;
             images: {
                 url: string;
-                publidId: string;
+                publicId: string;
             }[]
         };
         variant: {
@@ -23,17 +37,21 @@ export type Order = {
             stock: number;
         };
         productName: string;
-        volume: string;
+        volume: number;
         price: number;
         quantity: number;
     };
 }
 
-type OrderData = {
+export type OrderData = {
     volume: number;
     quantity: number;
     addressId: string;
 }
+
+type UpdateOrderStatusResponse = {
+    orderStatus: OrderStatus;
+};
 
 type ApiResponse<T> = {
     statusCode: number;
@@ -42,7 +60,7 @@ type ApiResponse<T> = {
     success: boolean;
 }
 
-type OrderParams = {
+export type OrderParams = {
     page: number;
     limit: number;
     query: string;
@@ -50,7 +68,7 @@ type OrderParams = {
 }
 
 export const createOrder = (data: OrderData, productId: string) => (
-    client.post(`/orders/${productId}`, data)
+    client.post<ApiResponse<Order>>(`/orders/${productId}`, data)
 )
 
 export const getOrders = (signal?: AbortSignal) => (
@@ -72,6 +90,6 @@ export const getAllOrders = (params: OrderParams, signal?: AbortSignal) => (
     })
 )
 
-export const updateOrderStatus = (orderId: string, status: string) => (
-    client.patch(`/admin/orders/${orderId}/status`, { status })
+export const updateOrderStatus = (orderId: string, updatedStatus: OrderStatus) => (
+    client.patch<ApiResponse<UpdateOrderStatusResponse>>(`/admin/orders/${orderId}/status`, { updatedStatus })
 )
