@@ -5,6 +5,7 @@ import {
   updateCartItem,
   type Cart,
   removeCartItem,
+  clearCart as clearDBCart
 } from "../api/cart";
 import axios from "axios";
 import { useSelector } from "react-redux";
@@ -205,6 +206,15 @@ function useCart() {
     }
   };
 
+  const clearCart = async() => {
+    if (authStatus) {
+      await clearDBCart()
+    }
+    else {
+      localStorage.clear()
+    }
+  }
+
   return {
     cart,
     error,
@@ -214,6 +224,7 @@ function useCart() {
     updateItemQuantity,
     removeFromCart,
     updatingItem,
+    clearCart
   };
 }
 
