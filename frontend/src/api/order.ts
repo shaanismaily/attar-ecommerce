@@ -43,10 +43,15 @@ export type Order = {
     };
 }
 
-export type OrderData = {
-    volume: number;
+export type OrderItemData = {
+    productId: string;
+    variantId: string;
     quantity: number;
+};
+
+export type OrderData = {
     addressId: string;
+    items: OrderItemData[]
 }
 
 type UpdateOrderStatusResponse = {
@@ -67,9 +72,9 @@ export type OrderParams = {
     sortType: string;
 }
 
-export const createOrder = (data: OrderData, productId: string) => (
-    client.post<ApiResponse<Order>>(`/orders/${productId}`, data)
-)
+export const createOrder = (data: OrderData) => (
+    client.post<ApiResponse<Order>>("/orders", data)
+);
 
 export const getOrders = (signal?: AbortSignal) => (
     client.get<ApiResponse<Order[]>>("/orders/me", { signal })
