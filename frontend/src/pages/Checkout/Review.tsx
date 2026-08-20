@@ -1,3 +1,4 @@
+import type { Address } from "../../api/addresses";
 import type { Cart } from "../../api/cart"
 
 type CardType = {
@@ -14,9 +15,10 @@ type ReviewProps = {
     payment: "card" | "upi" | "cod";
     card: CardType;
     setStep: React.Dispatch<React.SetStateAction<number>>;
+    address: Address
 }
 
-function Review({ cart, handlePlaceOrder, grandTotal, payment, card, setStep }: ReviewProps) {
+function Review({ cart, handlePlaceOrder, grandTotal, payment, card, setStep, address }: ReviewProps) {
   return (
     <div className="animate-fade-in">
                 <h2
@@ -78,13 +80,13 @@ function Review({ cart, handlePlaceOrder, grandTotal, payment, card, setStep }: 
                       className="text-sm text-[#666]"
                       style={{ fontFamily: "var(--font-sans)" }}
                     >
-                      {address.address1}
+                      {address.street}
                     </p>
                     <p
                       className="text-sm text-[#666]"
                       style={{ fontFamily: "var(--font-sans)" }}
                     >
-                      {address.city}, {address.state} {address.pin}
+                      {address.city}, {address.state} {address.zipCode}
                     </p>
                   </div>
                   <div className="p-5 bg-white border border-[#e8e4d8]">
