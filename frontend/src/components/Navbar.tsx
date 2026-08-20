@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { SearchIcon, HamburgerIcon, WishlistIcon, CartIcon, AccountIcon } from "./icons";
+import useCart from "../hooks/useCart";
 
 function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const location = useLocation();
+
+  const { cart } = useCart()
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40);
@@ -61,7 +64,7 @@ function Navbar() {
                 className="text-[0.55rem] tracking-[0.3em] uppercase"
                 style={{ color: "#C9A227", fontFamily: "var(--font-sans)" }}
               >
-                Luxury Attars
+                BY SHAAN ISMAILY
               </span>
             </Link>
 
@@ -113,11 +116,11 @@ function Navbar() {
                 aria-label="Cart"
               >
                 <CartIcon />
-                {/* {cartCount > 0 && (
+                {(cart?.items?.length ?? 0) > 0 && (
                   <span className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-[#0F5132] text-white text-[0.6rem] flex items-center justify-center font-medium">
-                    {cartCount}
+                    {cart?.items?.length}
                   </span>
-                )} */}
+                )}
               </Link>
 
               {/* Login */}

@@ -17,7 +17,6 @@ export default function Footer() {
     <footer className="bg-[#0a2e1c] text-[#d4cfbf]">
       {/* Top divider */}
       <div className="h-px bg-linear-to-r from-transparent via-[#C9A227] to-transparent" />
-
       {/* Main Footer Content */}
       <div className="max-w-350 mx-auto px-6 lg:px-10 py-16 lg:py-20">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8">
@@ -29,7 +28,7 @@ export default function Footer() {
                 SHAAN
               </div>
               <div className="text-[0.58rem] tracking-[0.3em] uppercase text-[#C9A227] mt-0.5">
-                Luxury Attars
+                BY SHAAN ISMAILY
               </div>
             </Link>
             <p className="text-sm leading-relaxed text-[#9a9585] mb-6 max-w-xs" style={{ fontFamily: "var(--font-sans)" }}>
