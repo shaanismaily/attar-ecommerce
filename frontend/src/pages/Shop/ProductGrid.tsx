@@ -117,7 +117,6 @@ function ProductGrid({ products }: ProductGridProps) {
           </div>
         );
       })}
-      ;
     </div>
   );
 }
