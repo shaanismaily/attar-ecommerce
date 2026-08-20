@@ -13,7 +13,7 @@ function Cart() {
     const cartTotal = cart?.totalAmount ?? 0;
     const shipping = cartTotal >= 599 ? 0 : 60;
     const tax = (cartTotal * 0.03).toFixed(2);
-    const grandTotal = cartTotal + shipping + tax;
+    const grandTotal = Number(cartTotal) + Number(shipping) + Number(tax);
 
   if (loading && !cart) {
     return (
