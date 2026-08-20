@@ -8,6 +8,8 @@ import {
     ProductDetailPage,
 } from "./pages";
 import Cart from "./pages/Cart";
+import Checkout from "./pages/Checkout/Checkout";
+import { Protected } from "./components/AuthLayout";
 
 export const router = createBrowserRouter([
     {
@@ -17,7 +19,15 @@ export const router = createBrowserRouter([
             {index: true, Component: Home},
             { path: "shop", Component: Shop },
             { path: "product/:slug", Component: ProductDetailPage },
-            { path: "cart", Component: Cart }
+            { path: "cart", Component: Cart },
+            {
+                path: "checkout",
+                element: (
+                    <Protected authentication={true}>
+                        <Checkout />
+                    </Protected>
+                )
+            }
         ]
     },
     {

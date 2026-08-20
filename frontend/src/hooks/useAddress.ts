@@ -27,8 +27,9 @@ function useAddress() {
           return;
         }
 
-        if (axios.isAxiosError(error)) {
-            setError(error?.response?.data?.message ?? error.message)
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+            setAddresses([])
+            setError("")
         } else {
             setError("Could not get addresses")
         }
