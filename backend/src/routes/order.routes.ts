@@ -15,7 +15,7 @@ const router = Router()
 router.use(verifyJWT)
 
 
-router.post("/orders/:productId", createOrder);
+router.post("/orders", createOrder);
 router.get("/orders/me", getUserOrders);
 router.get("/orders/:orderId", getOrder);
 router.patch("/orders/:orderId/cancel", cancelOrder);
