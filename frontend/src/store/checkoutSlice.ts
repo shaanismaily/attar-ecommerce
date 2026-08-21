@@ -1,4 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import type { Product, Variant } from "../api/products";
 
 type CheckoutIntent =
   | {
@@ -6,7 +7,8 @@ type CheckoutIntent =
     }
   | {
       type: "buyNow";
-      variantId: string;
+      product: Product;
+      variant: Variant;
       quantity: number;
     };
 

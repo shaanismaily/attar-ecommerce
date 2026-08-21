@@ -6,6 +6,8 @@ import { useNavigate } from "react-router-dom";
 import ProductDetailSkeleton from "./ProductDetailSkeleton";
 import ProductDetailError from "./ProductDetailError";
 import useCart from "../../hooks/useCart";
+import { useDispatch } from "react-redux";
+import { setCheckoutIntent } from "../../store/checkoutSlice";
 
 function ProductDetailPage() {
   const { slug } = useParams();
@@ -23,6 +25,7 @@ function ProductDetailPage() {
   const [zooming, setZooming] = useState(false);
 
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   useEffect(() => {
     if (volumes && volumes.length > 0 && selectedSize === null) {
@@ -75,7 +78,14 @@ function ProductDetailPage() {
   const handleBuyNow = () => {
     if (!selectedVariant) return;
 
-    navigate("/cart");
+    dispatch(setCheckoutIntent({
+      type: "buyNow",
+      product: product,
+      variant: selectedVariant,
+      quantity: qty
+    }));
+
+    navigate("/checkout");
   };
 
   return (

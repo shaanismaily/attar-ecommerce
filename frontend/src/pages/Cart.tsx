@@ -1,14 +1,15 @@
 import { useNavigate, Link } from "react-router-dom"
 import useCart from "../hooks/useCart"
-import { useSelector } from "react-redux"
+import { useDispatch, useSelector } from "react-redux"
 import type { RootState } from "../store/store"
+import { setCheckoutIntent } from "../store/checkoutSlice"
 
 function Cart() {
     const { cart, removeFromCart, updateItemQuantity, updatingItem, error, loading, refetch } = useCart()
     const navigate = useNavigate()
 
-      const authStatus = useSelector((state: RootState) => state.auth.status);
-    
+    const authStatus = useSelector((state: RootState) => state.auth.status);
+    const dispatch = useDispatch()
   
     const cartTotal = cart?.totalAmount ?? 0;
     const shipping = cartTotal >= 599 ? 0 : 60;
@@ -233,7 +234,12 @@ function Cart() {
               </div>
 
               <button
-                onClick={() => navigate("/checkout")}
+                onClick={() =>{ 
+                  navigate("/checkout")
+                  dispatch(setCheckoutIntent({
+                    type: "cart"
+                  }))
+                }}
                 className="btn-primary w-full mb-4"
               >
                 Proceed to Checkout

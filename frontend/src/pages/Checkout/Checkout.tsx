@@ -2,10 +2,13 @@ import { Link } from "react-router-dom";
 import useCart from "../../hooks/useCart";
 import { useState } from "react";
 import AddressStep from "./AddressStep";
-import ShippingMethod, { type KeyType } from "./ShippingMethod"
+import ShippingMethod, { type KeyType } from "./ShippingMethod";
 import PaymentMethod from "./PaymentMethod";
 import Review from "./Review";
 import type { Address } from "../../api/addresses";
+import { createOrder } from "../../api/order";
+import { useSelector } from "react-redux";
+import type { RootState } from "../../store/store";
 
 const STEPS = [
   { id: 1, label: "Address" },
@@ -16,15 +19,21 @@ const STEPS = [
 
 function Checkout() {
   const { cart, clearCart } = useCart();
-  // const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [ordered, setOrdered] = useState(false);
 
   const [payment, setPayment] = useState<"card" | "upi" | "cod">("card");
-  const [card, setCard] = useState({ number: "", name: "", expiry: "", cvv: "" });
+  const [card, setCard] = useState({
+    number: "",
+    name: "",
+    expiry: "",
+    cvv: "",
+  });
 
-  const [ selectedAddressId, setSelectedAddressId ] = useState<string | null>(null)
-  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null)
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
+    null,
+  );
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [shipping, setShipping] = useState<KeyType>("standard");
 
   type ShippingMethod = "standard";
@@ -34,34 +43,86 @@ function Checkout() {
   const shippingCosts: Record<ShippingMethod, number> = {
     standard: STANDARD_SHIPPING_COST,
   };
-  
+
   const shippingCost =
-       shipping === "standard" && (cart?.totalAmount ?? 0) >= FREE_SHIPPING_THRESHOLD
-           ? 0
-           : shippingCosts[shipping];
+    shipping === "standard" &&
+    (cart?.totalAmount ?? 0) >= FREE_SHIPPING_THRESHOLD
+      ? 0
+      : shippingCosts[shipping];
 
   const shippingLabels: Record<
-      ShippingMethod,
-      {
-          label: string;
-          desc: string;
-          price: string;
-      }
+    ShippingMethod,
+    {
+      label: string;
+      desc: string;
+      price: string;
+    }
   > = {
-      standard: {
-          label: "Standard Delivery",
-          desc: "5-7 business days",
-          price: shippingCost == 0 ? 
-            "Free" : `₹${shippingCost}`,
-      },
+    standard: {
+      label: "Standard Delivery",
+      desc: "5-7 business days",
+      price: shippingCost == 0 ? "Free" : `₹${shippingCost}`,
+    },
   };
 
-  const tax = Math.round((cart?.totalAmount ?? 0) * 0.03);
+  const intent = useSelector((state: RootState) => state.checkout.intent);
 
-  const grandTotal = (cart?.totalAmount ?? 0) + shippingCost + tax;
+  const subTotal = 
+    intent?.type === "cart"
+      ? cart?.totalAmount
+      : intent?.variant.price
+
+  const tax = Math.round((subTotal ?? 0) * 0.03);
+  const grandTotal = (subTotal ?? 0) + shippingCost + tax;
+
+  const checkoutItems =
+    intent?.type === "cart"
+      ? (cart?.items ?? [])
+      : intent?.type === "buyNow"
+        ? [
+            {
+              product: intent.product,
+              variant: intent.variant,
+              quantity: intent.quantity,
+            },
+          ]
+        : [];
+
   const handlePlaceOrder = async () => {
-    clearCart();
-    setOrdered(true);
+    try {
+      if (!intent) return;
+
+      if (intent.type === "cart") {
+        if (!cart || cart.items.length === 0) {
+          return;
+        }
+
+        await createOrder({
+          addressId: selectedAddressId!,
+          items: checkoutItems.map((item) => ({
+            productId: item.product._id,
+            variantId: item.variant._id,
+            quantity: item.quantity,
+          })),
+        });
+
+        await clearCart();
+        setOrdered(true);
+      } else {
+        await createOrder({
+          addressId: selectedAddressId!,
+          items: [
+            {
+              productId: intent.product._id,
+              variantId: intent.variant._id,
+              quantity: intent.quantity,
+            },
+          ],
+        });
+      }
+    } catch (error) {
+      console.error("Failed to create order:", error);
+    }
   };
 
   if (ordered) {
@@ -92,16 +153,16 @@ function Checkout() {
             style={{ fontFamily: "var(--font-sans)" }}
           >
             Your order{" "}
-            <strong className="text-[#222]">
+            {/* <strong className="text-[#222]">
               #NQ{Math.floor(Math.random() * 90000 + 10000)}
-            </strong>{" "}
+            </strong>{" "} */}
             has been placed successfully.
           </p>
           <p
             className="text-[#888] mb-10 leading-relaxed"
             style={{ fontFamily: "var(--font-sans)" }}
           >
-          Your precious attars are being prepared with care.
+            Your precious attars are being prepared with care.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link to="/" className="btn-primary inline-block">
@@ -120,7 +181,7 @@ function Checkout() {
     );
   }
 
-  if (cart?.items.length === 0) {
+  if (checkoutItems.length === 0) {
     return (
       <div className="min-h-screen bg-[#FAF8F3] pt-32 flex items-center justify-center">
         <div className="text-center">
@@ -213,7 +274,7 @@ function Checkout() {
 
             {/* Step 3: Payment */}
             {step === 3 && (
-              <PaymentMethod 
+              <PaymentMethod
                 setStep={setStep}
                 payment={payment}
                 setPayment={setPayment}
@@ -224,13 +285,14 @@ function Checkout() {
 
             {/* Step 4: Review */}
             {step === 4 && (
-              <Review  
+              <Review
                 setStep={setStep}
                 payment={payment}
                 handlePlaceOrder={handlePlaceOrder}
                 grandTotal={grandTotal}
                 cart={cart}
                 card={card}
+                address={selectedAddress!}
               />
             )}
           </div>
@@ -245,10 +307,11 @@ function Checkout() {
                   fontSize: "1.1rem",
                 }}
               >
-                Your Order ({cart?.items.length} items)
+                Your Order ({checkoutItems.length}{" "}
+                {checkoutItems.length > 1 ? "items" : "item"})
               </h3>
               <div className="space-y-3 mb-5">
-                {cart?.items.map((item) => (
+                {checkoutItems.map((item) => (
                   <div
                     key={`${item.product._id}-${item.variant.volume}`}
                     className="flex items-center gap-3"
@@ -271,7 +334,7 @@ function Checkout() {
                         className="text-[0.65rem] text-[#888]"
                         style={{ fontFamily: "var(--font-sans)" }}
                       >
-                        {item.variant.volume} × {item.quantity}
+                        {item.variant.volume} ml × {item.quantity}
                       </p>
                     </div>
                     <span
@@ -290,7 +353,7 @@ function Checkout() {
                   style={{ fontFamily: "var(--font-sans)" }}
                 >
                   <span className="text-[#666]">Subtotal</span>
-                  <span>₹{cart?.totalAmount.toLocaleString()}</span>
+                  <span>₹{subTotal?.toLocaleString()}</span>
                 </div>
                 <div
                   className="flex justify-between text-sm"
