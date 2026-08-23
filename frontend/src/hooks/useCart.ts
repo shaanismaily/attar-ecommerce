@@ -5,7 +5,8 @@ import {
   updateCartItem,
   type Cart,
   removeCartItem,
-  clearCart as clearDBCart
+  clearCart as clearDBCart,
+  previewCart
 } from "../api/cart";
 import axios from "axios";
 import { useSelector } from "react-redux";
@@ -16,6 +17,33 @@ const normalizeCart = (data: {
   totalAmount: number;
 }): Cart => ({ ...data.cart, totalAmount: data.totalAmount });
 
+type GuestCartItem = {
+  variantId: string;
+  quantity: number;
+};
+
+const readGuestCartItems = (): GuestCartItem[] => {
+  const stored = localStorage.getItem("cartItems");
+  if (!stored) return [];
+
+  try {
+    const items: unknown = JSON.parse(stored);
+    if (!Array.isArray(items)) return [];
+
+    return items.filter(
+      (item): item is GuestCartItem =>
+        typeof item === "object" &&
+        item !== null &&
+        typeof (item as GuestCartItem).variantId === "string" &&
+        Number.isInteger((item as GuestCartItem).quantity) &&
+        (item as GuestCartItem).quantity > 0,
+    );
+  } catch {
+    localStorage.removeItem("cartItems");
+    return [];
+  }
+};
+
 function useCart() {
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(false);
@@ -24,12 +52,20 @@ function useCart() {
 
   const authStatus = useSelector((state: RootState) => state.auth.status);
 
-  const getGuestCart = (): Cart | null => {
-    const stored = localStorage.getItem("cartItems");
+  const getGuestCart = async (): Promise<Cart | null> => {
+    const items = readGuestCartItems();
+    if (items.length === 0) return null;
 
-    return stored ? JSON.parse(stored) : null;
+    const response = await previewCart(items);
+    const { items: previewItems, totalAmount } = response.data.data;
+
+    return {
+      _id: "guest",
+      user: "guest",
+      items: previewItems,
+      totalAmount,
+    };
   };
-
   const getDatabaseCart = async (signal?: AbortSignal): Promise<Cart> => {
     const response = await getUserCart(signal);
     return normalizeCart(response.data.data);
@@ -45,7 +81,7 @@ function useCart() {
       try {
         const cartData = authStatus
           ? await getDatabaseCart(signal)
-          : getGuestCart();
+          : await getGuestCart();
 
         if (signal?.aborted) return;
 
@@ -85,18 +121,27 @@ function useCart() {
 
   const addItemToCart = async (quantity: number, variantId?: string) => {
     if (authStatus) {
-      await addItemToCartApi(quantity, variantId);
+      const response = await addItemToCartApi(quantity, variantId);
+      setCart(normalizeCart(response.data.data));
     } else {
-      const existingCart = JSON.parse(
-        localStorage.getItem("cartItems") || "[]",
+      if (!variantId) {
+        setError("Please select a variant");
+        return;
+      }
+
+      const existingCart = readGuestCartItems();
+      const existingItem = existingCart.find(
+        (item) => item.variantId === variantId,
       );
 
-      existingCart.push({
-        quantity,
-        variantId,
-      });
+      if (existingItem) {
+        existingItem.quantity += quantity;
+      } else {
+        existingCart.push({ quantity, variantId });
+      }
 
       localStorage.setItem("cartItems", JSON.stringify(existingCart));
+      await refetch();
     }
   };
 
@@ -111,18 +156,12 @@ function useCart() {
       try {
         setError("");
 
-        const storedCart = localStorage.getItem("cartItems");
-
-        if (!storedCart) {
+        const existingCart = readGuestCartItems();
+        if (existingCart.length === 0) {
           return;
         }
 
-        const existingCart = JSON.parse(storedCart);
-
-        const item = existingCart.find(
-          (item: { variantId: string; quantity: number }) =>
-            item.variantId === id,
-        );
+        const item = existingCart.find((item) => item.variantId === id);
 
         if (!item) {
           setError("Cart item not found");
@@ -132,9 +171,7 @@ function useCart() {
         item.quantity = quantity;
 
         localStorage.setItem("cartItems", JSON.stringify(existingCart));
-
-        // Update React state
-        setCart(existingCart);
+        await refetch();
       } catch (error) {
         setError("Could not update cart item");
       }
@@ -169,20 +206,13 @@ function useCart() {
         return;
 
     if (!authStatus) {
-      const storedCart = localStorage.getItem("cartItems");
-
-      if (!storedCart) {
-        return;
-      }
-
-      const newItems = JSON.parse(storedCart).filter(
-        (item: { variantId: string; quantity: number }) =>
-          item.variantId !== id,
+      const newItems = readGuestCartItems().filter(
+        (item) => item.variantId !== id,
       );
 
-      localStorage.setItem("cartItems", JSON.stringify(newItems))
+      localStorage.setItem("cartItems", JSON.stringify(newItems));
 
-      setCart(newItems);
+      await refetch();
       return;
     }
 
@@ -208,10 +238,12 @@ function useCart() {
 
   const clearCart = async() => {
     if (authStatus) {
-      await clearDBCart()
+      await clearDBCart();
+      setCart(null);
     }
     else {
-      localStorage.clear()
+      localStorage.removeItem("cartItems");
+      setCart(null);
     }
   }
 

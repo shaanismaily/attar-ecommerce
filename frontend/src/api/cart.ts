@@ -30,14 +30,19 @@ export type Cart = {
     totalAmount: number;
 }
 
+export type GuestCartResponse = {
+    items: Cart["items"];
+    totalAmount: number
+}
+
 type CartResponseData = {
     cart: Omit<Cart, "totalAmount">;
     totalAmount: number;
 }
 
-type ApiResponse = {
+type ApiResponse<T> = {
     statusCode: number;
-    data: CartResponseData;
+    data: T;
     message: string;
     success: boolean
 }
@@ -48,11 +53,11 @@ type ItemsProps = {
 }
 
 export const addItemToCart = (quantity: number, variantId?: string) => (
-    client.post<ApiResponse>(`/cart/items/${variantId}`, { quantity })
+    client.post<ApiResponse<CartResponseData>>(`/cart/items/${variantId}`, { quantity })
 )
 
 export const getUserCart = (signal?: AbortSignal) => (
-    client.get<ApiResponse>("/cart", { signal })
+    client.get<ApiResponse<CartResponseData>>("/cart", { signal })
 )
 
 export const clearCart = () => (
@@ -60,13 +65,17 @@ export const clearCart = () => (
 )
 
 export const updateCartItem = (cartItemId: string, quantity: number) => (
-    client.patch<ApiResponse>(`/cart/items/${cartItemId}`, { quantity })
+    client.patch<ApiResponse<CartResponseData>>(`/cart/items/${cartItemId}`, { quantity })
 )
 
 export const removeCartItem = (cartItemId: string) => (
-    client.delete<ApiResponse>(`/cart/items/${cartItemId}`)
+    client.delete<ApiResponse<CartResponseData>>(`/cart/items/${cartItemId}`)
 )
 
 export const mergeCart = (items: ItemsProps[]) => (
-    client.post<ApiResponse>("/cart/merge", items)
+    client.post<ApiResponse<CartResponseData>>("/cart/merge", { items })
+)
+
+export const previewCart = (items: ItemsProps[]) => (
+    client.post<ApiResponse<GuestCartResponse>>("/cart/preview", { items })
 )
