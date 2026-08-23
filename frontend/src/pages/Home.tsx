@@ -326,7 +326,7 @@ function Home() {
             className="text-4xl font-bold text-[#222] mb-4"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            Why Choose NAQSH
+            Why Choose SHAAN
           </h2>
           <div className="divider-gold w-24 mx-auto" />
         </div>

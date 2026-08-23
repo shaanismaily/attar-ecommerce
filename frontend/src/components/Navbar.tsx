@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { SearchIcon, HamburgerIcon, WishlistIcon, CartIcon, AccountIcon } from "./icons";
+import { WishlistIcon, HamburgerIcon, CartIcon, AccountIcon } from "./icons";
 import useCart from "../hooks/useCart";
+import { useSelector } from "react-redux";
+import type { RootState } from "../store/store";
 
 function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
+  // const [searchOpen, setSearchOpen] = useState(false);
   const location = useLocation();
 
-  const { cart } = useCart()
+  const { cart } = useCart();
+  const authStatus = useSelector((state: RootState) => state.auth.status)
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40);
@@ -19,7 +22,7 @@ function Navbar() {
 
   useEffect(() => {
     setMenuOpen(false);
-    setSearchOpen(false);
+    // setSearchOpen(false);
   }, [location.pathname]);
 
   const isHome = location.pathname === "/";
@@ -85,29 +88,30 @@ function Navbar() {
             </div>
 
             {/* Icons */}
-            <div className="flex items-center gap-4">
-              {/* Search */}
-              <button
+            <div className="flex items-center gap-4"> 
+             {/* <button
                 onClick={() => setSearchOpen(true)}
                 className={`p-2 transition-colors duration-200 ${textColor} ${hoverColor}`}
                 aria-label="Search"
               >
                 <SearchIcon className="h-4.5 w-4.5"/>
-              </button>
+              </button> */}
 
               {/* Wishlist */}
-              <Link
+              {authStatus && 
+                <Link
                 to="/dashboard/wishlist"
                 className={`p-2 relative transition-colors duration-200 ${textColor} ${hoverColor}`}
                 aria-label="Wishlist"
-              >
-                <WishlistIcon />
-                {/* {wishlist.length > 0 && (
-                  <span className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-[#C9A227] text-white text-[0.6rem] flex items-center justify-center font-medium">
-                    {wishlist.length}
-                  </span>
-                )} */}
-              </Link>
+                >
+                  <WishlistIcon />
+                  {/* {wishlist.length > 0 && (
+                    <span className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-[#C9A227] text-white text-[0.6rem] flex items-center justify-center font-medium">
+                      {wishlist.length}
+                    </span>
+                  )}  */}
+                </Link>
+              }
 
               {/* Cart */}
               <Link
@@ -123,15 +127,26 @@ function Navbar() {
                 )}
               </Link>
 
-              {/* Login */}
-              <Link
+              {!authStatus &&
+                <Link
+                to="/login"
+                className="hidden lg:flex items-center gap-1.5 px-4 py-2 border border-[#C9A227] text-[#C9A227] text-[0.72rem] tracking-widest uppercase font-medium transition-all duration-300 hover:bg-[#C9A227] hover:text-white"
+                style={{ fontFamily: "var(--font-sans)" }}
+                >
+                  Login
+                </Link>
+              }
+              {/* Account */}
+              {authStatus && 
+                <Link
                 to="/dashboard"
                 className="hidden lg:flex items-center gap-1.5 px-4 py-2 border border-[#C9A227] text-[#C9A227] text-[0.72rem] tracking-widest uppercase font-medium transition-all duration-300 hover:bg-[#C9A227] hover:text-white"
                 style={{ fontFamily: "var(--font-sans)" }}
-              >
-                <AccountIcon />
-                Account
-              </Link>
+                >
+                  <AccountIcon />
+                  Account
+                </Link>
+              }
 
               {/* Mobile hamburger */}
               <button
@@ -170,45 +185,45 @@ function Navbar() {
       </nav>
 
       {/* Search Overlay */}
-      {searchOpen && (
-        <div
-          className="fixed inset-0 z-60 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-32 px-6"
-          onClick={(e) => e.target === e.currentTarget && setSearchOpen(false)}
-        >
-          <div className="w-full max-w-xl">
-            <div className="relative animate-fade-in">
-              <input
-                autoFocus
-                type="text"
-                placeholder="Search attars, collections..."
-                className="w-full bg-[#FAF8F3] px-6 py-5 text-lg text-[#222] border border-[#C9A227] outline-none font-display placeholder:text-[#aaa] placeholder:font-sans placeholder:text-base"
-                style={{ fontFamily: "var(--font-display)" }}
-              />
-              <button
-                onClick={() => setSearchOpen(false)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#888] hover:text-[#222] transition-colors"
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M18 6 6 18M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <p
-              className="text-[#ccc] text-xs tracking-widest uppercase mt-3"
-              style={{ fontFamily: "var(--font-sans)" }}
-            >
-              Press ESC to close
-            </p>
-          </div>
-        </div>
-      )}
+      {/* // {searchOpen && (
+      //   <div
+      //     className="fixed inset-0 z-60 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-32 px-6"
+      //     onClick={(e) => e.target === e.currentTarget && setSearchOpen(false)}
+      //   >
+      //     <div className="w-full max-w-xl">
+      //       <div className="relative animate-fade-in">
+      //         <input
+      //           autoFocus
+      //           type="text"
+      //           placeholder="Search attars, collections..."
+      //           className="w-full bg-[#FAF8F3] px-6 py-5 text-lg text-[#222] border border-[#C9A227] outline-none font-display placeholder:text-[#aaa] placeholder:font-sans placeholder:text-base"
+      //           style={{ fontFamily: "var(--font-display)" }}
+      //         />
+      //         <button
+      //           onClick={() => setSearchOpen(false)}
+      //           className="absolute right-4 top-1/2 -translate-y-1/2 text-[#888] hover:text-[#222] transition-colors"
+      //         >
+      //           <svg
+      //             width="20"
+      //             height="20"
+      //             fill="none"
+      //             stroke="currentColor"
+      //             strokeWidth="2"
+      //             viewBox="0 0 24 24"
+      //           >
+      //             <path d="M18 6 6 18M6 6l12 12" />
+      //           </svg>
+      //         </button>
+      //       </div>
+      //       <p
+      //         className="text-[#ccc] text-xs tracking-widest uppercase mt-3"
+      //         style={{ fontFamily: "var(--font-sans)" }}
+      //       >
+      //         Press ESC to close
+      //       </p>
+      //     </div>
+      //   </div>
+      // )} */}
     </>
   );
 }
