@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react"
-import { getOrder, type Order } from "../api/order"
+import { getOrders, type Order } from "../api/order"
 import axios from "axios"
 
 function useOrder() {
-  const [orders, setOrders] = useState<Address[] | []>([])
+  const [orders, setOrders] = useState<Order[] | []>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -16,7 +16,7 @@ function useOrder() {
     setError("")
 
     try {
-        const response = await getorders(signal)
+        const response = await getOrders(signal)
         setOrders(response.data.data)
     } catch (error) {
         if (axios.isCancel(error)) {
