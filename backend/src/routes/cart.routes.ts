@@ -5,12 +5,14 @@ import { addItemToCart,
     removeCartItem,
     updateCartItem,
     clearCart,
-    mergeCart
+    mergeCart,
+    previewCart
 } from "../controllers/cart.controller.js";
 
 
 const router = Router()
 
+router.post("/preview", previewCart)
 router.use(verifyJWT)
 
 router

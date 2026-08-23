@@ -247,16 +247,13 @@ const mergeCart = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Cart items are required");
     }
 
-    let cart = await Cart.findOne({
-        user: req.user!._id
-    });
+    /*
+     * ----------------------------------------------------
+     * 1. Validate input + combine duplicate variants
+     * ----------------------------------------------------
+     */
 
-    if (!cart) {
-        cart = await Cart.create({
-            user: req.user!._id,
-            items: []
-        });
-    }
+    const quantityMap = new Map<string, number>();
 
     for (const item of items) {
         const { variantId, quantity } = item;
@@ -272,31 +269,123 @@ const mergeCart = asyncHandler(async (req, res) => {
             );
         }
 
-        const variant = await Variant.findById(variantId);
+        const id = variantId.toString();
+
+        quantityMap.set(
+            id,
+            (quantityMap.get(id) || 0) + quantity
+        );
+    }
+
+    const variantIds = [...quantityMap.keys()];
+
+    /*
+     * ----------------------------------------------------
+     * 2. Fetch ALL variants in ONE query
+     * ----------------------------------------------------
+     */
+
+    const variants = await Variant.find({
+        _id: { $in: variantIds }
+    }).lean();
+
+    /*
+     * ----------------------------------------------------
+     * 3. Create O(1) lookup map
+     * ----------------------------------------------------
+     */
+
+    const variantMap = new Map(
+        variants.map(variant => [
+            variant._id.toString(),
+            variant
+        ])
+    );
+
+    /*
+     * ----------------------------------------------------
+     * 4. Validate every guest cart item
+     * ----------------------------------------------------
+     */
+
+    for (const [variantId, quantity] of quantityMap) {
+        const variant = variantMap.get(variantId);
 
         if (!variant) {
-            throw new ApiError(404, "Variant not found");
+            throw new ApiError(
+                404,
+                `Variant ${variantId} not found`
+            );
         }
 
         if (!variant.isAvailable) {
-            throw new ApiError(400, "Variant is unavailable");
+            throw new ApiError(
+                400,
+                "One or more variants are unavailable"
+            );
         }
 
+        if (quantity > variant.stock) {
+            throw new ApiError(
+                400,
+                "Insufficient stock"
+            );
+        }
+    }
+
+    /*
+     * ----------------------------------------------------
+     * 5. Get user's existing cart
+     * ----------------------------------------------------
+     */
+
+    let cart = await Cart.findOne({
+        user: req.user!._id
+    });
+
+    /*
+     * ----------------------------------------------------
+     * 6. Create cart if it doesn't exist
+     * ----------------------------------------------------
+     */
+
+    if (!cart) {
+        cart = new Cart({
+            user: req.user!._id,
+            items: []
+        });
+    }
+
+    /*
+     * ----------------------------------------------------
+     * 7. Merge everything in memory
+     * ----------------------------------------------------
+     */
+
+    for (const [variantId, quantity] of quantityMap) {
+        const variant = variantMap.get(variantId)!;
+
         const existingItem = cart.items.find(
-            cartItem => cartItem.variant.equals(variant._id)
+            cartItem =>
+                cartItem.variant.toString() === variantId
         );
 
         if (existingItem) {
-            if (existingItem.quantity + quantity > variant.stock) {
-                throw new ApiError(400, "Insufficient stock");
+            const newQuantity =
+                existingItem.quantity + quantity;
+
+            if (newQuantity > variant.stock) {
+                throw new ApiError(
+                    400,
+                    "Insufficient stock"
+                );
             }
 
-            existingItem.quantity += quantity;
+            existingItem.quantity = newQuantity;
+
+            // Update price to current price
+            existingItem.priceAtAddition = variant.price;
         } else {
-            if (quantity > variant.stock) {
-                throw new ApiError(400, "Insufficient stock");
-            }
-
             cart.items.push({
                 product: variant.product,
                 variant: variant._id,
@@ -306,7 +395,19 @@ const mergeCart = asyncHandler(async (req, res) => {
         }
     }
 
+    /*
+     * ----------------------------------------------------
+     * 8. ONE database write
+     * ----------------------------------------------------
+     */
+
     await cart.save();
+
+    /*
+     * ----------------------------------------------------
+     * 9. Populate cart for response
+     * ----------------------------------------------------
+     */
 
     await cart.populate([
         {
@@ -333,11 +434,139 @@ const mergeCart = asyncHandler(async (req, res) => {
     );
 });
 
+const previewCart = asyncHandler(async (req, res) => {
+    const { items } = req.body;
+
+    if (!Array.isArray(items) || items.length === 0) {
+        throw new ApiError(400, "Cart items are required");
+    }
+
+    // Validate input and remove duplicate variant IDs
+    const quantityMap = new Map<string, number>();
+
+    for (const item of items) {
+        const { variantId, quantity } = item;
+
+        if (!mongoose.isValidObjectId(variantId)) {
+            throw new ApiError(400, "Invalid variant ID");
+        }
+
+        if (!Number.isInteger(quantity) || quantity < 1) {
+            throw new ApiError(400, "Quantity must be at least 1");
+        }
+
+        const id = variantId.toString();
+
+        // If the same variant appears multiple times,
+        // combine the quantities.
+        quantityMap.set(
+            id,
+            (quantityMap.get(id) || 0) + quantity
+        );
+    }
+
+    const variantIds = [...quantityMap.keys()];
+
+    // ONE database query
+    const variants = await Variant.find({
+        _id: { $in: variantIds }
+    })
+        .populate({
+            path: "product",
+            select: "_id name slug images"
+        })
+        .lean();
+
+    // Make lookup O(1)
+    const variantMap = new Map(
+        variants.map(variant => [
+            variant._id.toString(),
+            variant
+        ])
+    );
+
+    const cartItems = [];
+
+    for (const [variantId, quantity] of quantityMap) {
+        const variant = variantMap.get(variantId);
+
+        if (!variant) {
+            throw new ApiError(
+                404,
+                `Variant ${variantId} not found`
+            );
+        }
+
+        // `populate()` supplies a product document at runtime, but Mongoose's lean type still describes this property as an ObjectId.
+        const product = variant.product as unknown as {
+            _id: mongoose.Types.ObjectId;
+            name: string;
+            slug: string;
+            images: { url: string; publicId: string }[];
+        } | null;
+
+        if (!variant.isAvailable) {
+            throw new ApiError(
+                400,
+                `${product?.name || "Product"} is unavailable`
+            );
+        }
+
+        if (!product) {
+            throw new ApiError(
+                404,
+                "Product not found for variant"
+            );
+        }
+
+        if (quantity > variant.stock) {
+            throw new ApiError(
+                400,
+                `Only ${variant.stock} items are available`
+            );
+        }
+
+        cartItems.push({
+            // A guest cart has no persisted cart-item ID; the variant ID is a stable identifier for its client-side quantity controls.
+            _id: variant._id,
+            product,
+
+            variant: {
+                _id: variant._id,
+                volume: variant.volume,
+                price: variant.price,
+                stock: variant.stock
+            },
+
+            quantity,
+
+            priceAtAddition: variant.price,
+        });
+    }
+
+    const totalAmount = cartItems.reduce(
+        (total, item) => total + (item.priceAtAddition * item.quantity),
+        0
+    );
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                items: cartItems,
+                totalAmount
+            },
+            "Cart preview generated successfully"
+        )
+    );
+});
+
 export {
     addItemToCart,
     getCart,
     removeCartItem,
     updateCartItem,
     clearCart,
-    mergeCart
+    mergeCart,
+    previewCart
 }
