@@ -1,44 +1,54 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { Product, Variant } from "../api/products";
+import type { Cart } from "../api/cart";
 
-type Item = {
-    product: Product;
-    variant: Variant;
-    price: number;
-    quantity: number;
-};
+type CartItem = Cart["items"][number];
 
 type AddToCartPayload = {
     product: Product;
     variant: Variant;
-    price: number;
+    priceAtAddition: number;
     quantity: number;
 };
 
-type CartItemIdentifier = {
-    productId: string;
-    variantId: string;
+type CartState = {
+    items: CartItem[];
+    totalAmount: number;
+    initialized: boolean;
 };
 
-type UpdateQuantityPayload = {
-    productId: string;
-    variantId: string;
-    quantity: number;
+const initialState: CartState = {
+    items: [],
+    totalAmount: 0,
+    initialized: false,
 };
 
-type InitialStateType = {
-    items: Item[];
-};
-
-const initialState: InitialStateType = {
-    items: []
+const calculateTotal = (items: CartItem[]) => {
+    return items.reduce(
+        (total, item) =>
+            total + item.priceAtAddition * item.quantity,
+        0
+    );
 };
 
 const cartSlice = createSlice({
     name: "cart",
+
     initialState,
 
     reducers: {
+        setCart: (
+            state,
+            action: PayloadAction<{
+                items: CartItem[];
+                totalAmount: number;
+            }>
+        ) => {
+            state.items = action.payload.items;
+            state.totalAmount = action.payload.totalAmount;
+            state.initialized = true;
+        },
+
         addToCart: (
             state,
             action: PayloadAction<AddToCartPayload>
@@ -46,13 +56,12 @@ const cartSlice = createSlice({
             const {
                 product,
                 variant,
-                price,
-                quantity
+                priceAtAddition,
+                quantity,
             } = action.payload;
 
             const existingItem = state.items.find(
                 item =>
-                    item.product._id === product._id &&
                     item.variant._id === variant._id
             );
 
@@ -60,68 +69,92 @@ const cartSlice = createSlice({
                 existingItem.quantity += quantity;
             } else {
                 state.items.push({
+                    _id: `guest-${variant._id}`,
                     product,
                     variant,
-                    price,
-                    quantity
+                    priceAtAddition,
+                    quantity,
                 });
             }
-        },
 
-        removeFromCart: (
-            state,
-            action: PayloadAction<CartItemIdentifier>
-        ) => {
-            const { productId, variantId } = action.payload;
-
-            state.items = state.items.filter(
-                item =>
-                    item.product._id !== productId ||
-                    item.variant._id !== variantId
+            state.totalAmount = calculateTotal(
+                state.items
             );
         },
 
         updateQuantity: (
             state,
-            action: PayloadAction<UpdateQuantityPayload>
+            action: PayloadAction<{
+                itemId: string;
+                quantity: number;
+            }>
         ) => {
             const {
-                productId,
-                variantId,
-                quantity
+                itemId,
+                quantity,
             } = action.payload;
 
-            const existingItem = state.items.find(
+            const item = state.items.find(
                 item =>
-                    item.product._id === productId &&
-                    item.variant._id === variantId
+                    item._id === itemId ||
+                    item.variant._id === itemId
             );
 
-            if (!existingItem) return;
+            if (!item) return;
 
             if (quantity <= 0) {
                 state.items = state.items.filter(
                     item =>
-                        item.product._id !== productId ||
-                        item.variant._id !== variantId
+                        item._id !== itemId &&
+                        item.variant._id !== itemId
                 );
-                return;
+            } else {
+                item.quantity = quantity;
             }
 
-            existingItem.quantity = quantity;
+            state.totalAmount = calculateTotal(
+                state.items
+            );
         },
 
-        clearCart: (state) => {
+        removeFromCart: (
+            state,
+            action: PayloadAction<string>
+        ) => {
+            const itemId = action.payload;
+
+            state.items = state.items.filter(
+                item =>
+                    item._id !== itemId &&
+                    item.variant._id !== itemId
+            );
+
+            state.totalAmount = calculateTotal(
+                state.items
+            );
+        },
+
+        clearCart: state => {
             state.items = [];
-        }
-    }
+            state.totalAmount = 0;
+        },
+
+        setInitialized: (
+            state,
+            action: PayloadAction<boolean>
+        ) => {
+            state.initialized = action.payload;
+        },
+    },
 });
 
 export const {
+    setCart,
     addToCart,
-    removeFromCart,
     updateQuantity,
-    clearCart
+    removeFromCart,
+    clearCart,
+    setInitialized,
 } = cartSlice.actions;
 
 export default cartSlice.reducer;

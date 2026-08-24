@@ -14,7 +14,7 @@ function ProductDetailPage() {
   const { product, relatedProducts, error, loading, refetch } = useProduct(slug);
   const { addItemToCart } = useCart()
 
-  const volumes = product?.variants?.map((variant) => variant.volume)
+  const volumes = product?.variants.map((variant) => variant.volume)
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState<number | null>(null);
@@ -63,6 +63,9 @@ function ProductDetailPage() {
   const selectedVariant = product.variants.find(
     (variant) => variant.volume === selectedSize,
   );
+
+  if (!selectedVariant)
+    return;
 
   const allImages = product?.images?.map((image) => image.url);
 
@@ -287,7 +290,11 @@ function ProductDetailPage() {
             <div className="flex flex-col sm:flex-row gap-3 mb-8">
               <button
                 onClick={ async() => {
-                  await addItemToCart(qty, selectedVariant?._id);
+                  await addItemToCart({
+                    variant: selectedVariant,
+                    product,
+                    quantity: qty
+                  });
                   setAddedToCart(true);
                 }}
                 className={`btn-primary flex-1 text-center transition-all ${

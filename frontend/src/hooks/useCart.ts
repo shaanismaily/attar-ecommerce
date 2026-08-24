@@ -6,11 +6,17 @@ import {
   type Cart,
   removeCartItem,
   clearCart as clearDBCart,
-  previewCart
+  previewCart,
 } from "../api/cart";
 import axios from "axios";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../store/store";
+import {
+  setCart,
+  clearCart as clearReduxCart,
+  addToCart,
+} from "../store/cartSlice";
+import type { Product, Variant } from "../api/products";
 
 const normalizeCart = (data: {
   cart: Omit<Cart, "totalAmount">;
@@ -45,12 +51,13 @@ const readGuestCartItems = (): GuestCartItem[] => {
 };
 
 function useCart() {
-  const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [updatingItem, setUpdatingItem] = useState<string | null>(null);
 
+  const cart = useSelector((state: RootState) => state.cart);
   const authStatus = useSelector((state: RootState) => state.auth.status);
+  const dispatch = useDispatch();
 
   const getGuestCart = async (): Promise<Cart | null> => {
     const items = readGuestCartItems();
@@ -85,7 +92,21 @@ function useCart() {
 
         if (signal?.aborted) return;
 
-        setCart(cartData);
+        if (cartData) {
+          dispatch(
+            setCart({
+              items: cartData.items,
+              totalAmount: cartData.totalAmount,
+            }),
+          );
+        } else {
+          dispatch(
+            setCart({
+              items: [],
+              totalAmount: 0,
+            }),
+          );
+        }
       } catch (error) {
         if (axios.isCancel(error)) {
           return;
@@ -119,29 +140,68 @@ function useCart() {
     };
   }, [refetch]);
 
-  const addItemToCart = async (quantity: number, variantId?: string) => {
-    if (authStatus) {
-      const response = await addItemToCartApi(quantity, variantId);
-      setCart(normalizeCart(response.data.data));
-    } else {
-      if (!variantId) {
-        setError("Please select a variant");
-        return;
-      }
+  const addItemToCart = async ({
+    product,
+    variant,
+    quantity,
+  }: {
+    product: Product;
+    variant: Variant;
+    quantity: number;
+  }) => {
+    setError("");
 
+    if (!authStatus) {
       const existingCart = readGuestCartItems();
+
       const existingItem = existingCart.find(
-        (item) => item.variantId === variantId,
+        (item) => item.variantId === variant._id,
       );
 
       if (existingItem) {
         existingItem.quantity += quantity;
       } else {
-        existingCart.push({ quantity, variantId });
+        existingCart.push({
+          variantId: variant._id,
+          quantity,
+        });
       }
 
       localStorage.setItem("cartItems", JSON.stringify(existingCart));
-      await refetch();
+
+      dispatch(
+        addToCart({
+          product,
+          variant,
+          priceAtAddition: variant.price,
+          quantity,
+        }),
+      );
+
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await addItemToCartApi(quantity, variant._id);
+
+      const cart = normalizeCart(response.data.data);
+
+      dispatch(
+        setCart({
+          items: cart.items,
+          totalAmount: cart.totalAmount,
+        }),
+      );
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        setError(error.response?.data?.message || error.message);
+      } else {
+        setError("Could not add items to cart");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -201,9 +261,7 @@ function useCart() {
   };
 
   const removeFromCart = async (id: string) => {
-
-    if (updatingItem) 
-        return;
+    if (updatingItem) return;
 
     if (!authStatus) {
       const newItems = readGuestCartItems().filter(
@@ -217,13 +275,13 @@ function useCart() {
     }
 
     try {
-        setUpdatingItem(id)
-        setLoading(true);
-        setError("")
+      setUpdatingItem(id);
+      setLoading(true);
+      setError("");
 
-        const response = await removeCartItem(id);
+      const response = await removeCartItem(id);
 
-        setCart(normalizeCart(response.data.data))
+      setCart(normalizeCart(response.data.data));
     } catch (error) {
       if (axios.isAxiosError(error)) {
         setError(error.response?.data?.message ?? error.message);
@@ -236,16 +294,25 @@ function useCart() {
     }
   };
 
-  const clearCart = async() => {
-    if (authStatus) {
-      await clearDBCart();
-      setCart(null);
+  const clearCart = async () => {
+    try {
+      setError("");
+
+      if (authStatus) {
+        await clearDBCart();
+      } else {
+        localStorage.removeItem("cartItems");
+      }
+
+      dispatch(clearReduxCart());
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        setError(error.response?.data?.message ?? error.message);
+      } else {
+        setError("Could not clear cart");
+      }
     }
-    else {
-      localStorage.removeItem("cartItems");
-      setCart(null);
-    }
-  }
+  };
 
   return {
     cart,
@@ -256,7 +323,7 @@ function useCart() {
     updateItemQuantity,
     removeFromCart,
     updatingItem,
-    clearCart
+    clearCart,
   };
 }
 
