@@ -8,8 +8,10 @@ type CardType = {
     cvv: string;
 }
 
+type ReviewItem = Pick<Cart["items"][number], "product" | "variant" | "quantity">;
+
 type ReviewProps = {
-    cart: Cart | null,
+  items: ReviewItem[],
     grandTotal: number;
     handlePlaceOrder: () => void;
     payment: "card" | "upi" | "cod";
@@ -18,7 +20,7 @@ type ReviewProps = {
     address: Address
 }
 
-function Review({ cart, handlePlaceOrder, grandTotal, payment, card, setStep, address }: ReviewProps) {
+function Review({ items, handlePlaceOrder, grandTotal, payment, card, setStep, address }: ReviewProps) {
   return (
     <div className="animate-fade-in">
                 <h2
@@ -30,7 +32,7 @@ function Review({ cart, handlePlaceOrder, grandTotal, payment, card, setStep, ad
 
                 {/* Items */}
                 <div className="space-y-4 mb-8">
-                  {cart?.items.map((item) => (
+                  {items.map((item) => (
                     <div
                       key={`${item.product._id}-${item.variant.volume}`}
                       className="flex items-center gap-4 bg-white p-4 border border-[#e8e4d8]"

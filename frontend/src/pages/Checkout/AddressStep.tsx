@@ -116,7 +116,7 @@ function AddressStep({
             <button
               type="button"
               onClick={() => setShowForm((prev) => !prev)}
-              className="btn-outline"
+              className="btn-outline text-[#C9A227]"
             >
               {showForm ? "Cancel" : "+ Add New Address"}
             </button>

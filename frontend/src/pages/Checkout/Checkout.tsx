@@ -40,13 +40,22 @@ function Checkout() {
   const FREE_SHIPPING_THRESHOLD = 599;
   const STANDARD_SHIPPING_COST = 60;
 
+  const intent = useSelector((state: RootState) => state.checkout.intent);
+
+  const subTotal =
+    intent?.type === "cart"
+      ? cart?.totalAmount
+      : intent?.type === "buyNow"
+        ? intent.variant.price * intent.quantity
+        : 0;
+
   const shippingCosts: Record<ShippingMethod, number> = {
     standard: STANDARD_SHIPPING_COST,
   };
 
   const shippingCost =
     shipping === "standard" &&
-    (cart?.totalAmount ?? 0) >= FREE_SHIPPING_THRESHOLD
+    (subTotal ?? 0) >= FREE_SHIPPING_THRESHOLD
       ? 0
       : shippingCosts[shipping];
 
@@ -64,13 +73,6 @@ function Checkout() {
       price: shippingCost == 0 ? "Free" : `₹${shippingCost}`,
     },
   };
-
-  const intent = useSelector((state: RootState) => state.checkout.intent);
-
-  const subTotal = 
-    intent?.type === "cart"
-      ? cart?.totalAmount
-      : intent?.variant.price
 
   const tax = Math.round((subTotal ?? 0) * 0.03);
   const grandTotal = (subTotal ?? 0) + shippingCost + tax;
@@ -119,6 +121,7 @@ function Checkout() {
             },
           ],
         });
+        setOrdered(true);
       }
     } catch (error) {
       console.error("Failed to create order:", error);
@@ -290,7 +293,7 @@ function Checkout() {
                 payment={payment}
                 handlePlaceOrder={handlePlaceOrder}
                 grandTotal={grandTotal}
-                cart={cart}
+                items={checkoutItems}
                 card={card}
                 address={selectedAddress!}
               />
