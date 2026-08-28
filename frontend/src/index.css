@@ -125,7 +125,7 @@ body {
 
 .btn-outline {
   background: transparent;
-  color: #FAF8F3;
+  /* color: #FAF8F3; */
   border: 1.5px solid rgba(201,162,39,0.7);
   font-family: var(--font-sans);
   font-weight: 500;

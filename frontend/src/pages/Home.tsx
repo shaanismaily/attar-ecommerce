@@ -69,7 +69,7 @@ function Home() {
               </Link>
               <Link
                 to="/collections"
-                className="btn-outline inline-block text-center"
+                className="btn-outline inline-block text-center text-white"
               >
                 Explore Collections
               </Link>
@@ -232,7 +232,7 @@ function Home() {
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
             {products.length > 0 && products.map((product: Product) => (
-              <ProductCard key={product._id} {...product} />
+              <ProductCard key={product._id} product={product} />
             ))}
           </div>
         </div>

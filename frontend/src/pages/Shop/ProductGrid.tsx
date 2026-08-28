@@ -12,6 +12,11 @@ function ProductGrid({ products }: ProductGridProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
       {products?.map((product) => {
+        const defaultVariant = product.variants[0];
+        const canAddToCart = Boolean(
+          defaultVariant?.isAvailable && defaultVariant.stock > 0,
+        );
+
         //   const wishlisted = isWishlisted(product.id);
         return (
           <div
@@ -64,7 +69,7 @@ function ProductGrid({ products }: ProductGridProps) {
                 {product.category.name}
               </p>
               <Link
-                to={`/product/${product._id}`}
+                to={`/product/${product.slug}`}
                 className="font-display text-base font-semibold text-[#222] hover:text-[#0F5132] transition-colors mb-1 leading-snug"
                 style={{ fontFamily: "var(--font-display)" }}
               >
@@ -89,31 +94,43 @@ function ProductGrid({ products }: ProductGridProps) {
                             </span>
                           )} */}
               </div>
-              <button
-                onClick={async () => {
-                  await addItemToCart({
-                    variant: product.variants[0], product, quantity: 1})
-                }}
-                className="btn-primary flex-1"
-              >
-                Add to Cart
-              </button>
-              <Link
-                to={`/product/${product.slug}`}
-                className="px-3 border border-[#d0ccc0] flex items-center justify-center hover:border-[#C9A227] transition-colors"
-              >
-                <svg
-                  width="15"
-                  height="15"
-                  fill="none"
-                  stroke="#888"
-                  strokeWidth="1.8"
-                  viewBox="0 0 24 24"
+              <div className="flex gap-2 mt-auto">
+                <button
+                  onClick={async () => {
+                    if (!defaultVariant || !canAddToCart) return;
+
+                    await addItemToCart({
+                      variant: defaultVariant,
+                      product,
+                      quantity: 1,
+                    });
+                  }}
+                  className="btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={!canAddToCart}
                 >
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              </Link>
+                  {!defaultVariant || !defaultVariant.isAvailable
+                    ? "Unavailable"
+                    : defaultVariant.stock < 1
+                      ? "Out of Stock"
+                      : "Add to Cart"}
+                </button>
+                <Link
+                  to={`/product/${product.slug}`}
+                  className="px-3 border border-[#d0ccc0] flex items-center justify-center hover:border-[#C9A227] transition-colors"
+                >
+                  <svg
+                    width="15"
+                    height="15"
+                    fill="none"
+                    stroke="#888"
+                    strokeWidth="1.8"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                </Link>
+              </div>
             </div>
           </div>
         );

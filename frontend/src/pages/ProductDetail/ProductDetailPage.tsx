@@ -67,6 +67,8 @@ function ProductDetailPage() {
   if (!selectedVariant)
     return;
 
+  const canAddToCart = selectedVariant.isAvailable && selectedVariant.stock > 0;
+
   const allImages = product?.images?.map((image) => image.url);
 
 
@@ -79,7 +81,7 @@ function ProductDetailPage() {
   };
 
   const handleBuyNow = () => {
-    if (!selectedVariant) return;
+    if (!selectedVariant || !canAddToCart || qty > selectedVariant.stock) return;
 
     dispatch(setCheckoutIntent({
       type: "buyNow",
@@ -228,7 +230,10 @@ function ProductDetailPage() {
                 {product?.variants?.map((variant) => (
                   <button
                     key={variant._id}
-                    onClick={() => setSelectedSize(variant.volume)}
+                    onClick={() => {
+                      setSelectedSize(variant.volume);
+                      setQty(1);
+                    }}
                     className={`px-5 py-2.5 border text-sm font-medium transition-all duration-200 ${
                       selectedSize === variant.volume
                         ? "border-[#0F5132] bg-[#0F5132] text-white"
@@ -268,8 +273,9 @@ function ProductDetailPage() {
                   {qty}
                 </span>
                 <button
-                  onClick={() => setQty((q) => q + 1)}
+                  onClick={() => setQty((q) => Math.min(selectedVariant.stock, q + 1))}
                   className="w-10 h-11 flex items-center justify-center hover:bg-[#f5f2ec] transition-colors"
+                  disabled={!canAddToCart || qty >= selectedVariant.stock}
                 >
                   <svg
                     width="14"
@@ -290,6 +296,8 @@ function ProductDetailPage() {
             <div className="flex flex-col sm:flex-row gap-3 mb-8">
               <button
                 onClick={ async() => {
+                  if (!canAddToCart || qty > selectedVariant.stock) return;
+
                   await addItemToCart({
                     variant: selectedVariant,
                     product,
@@ -299,17 +307,25 @@ function ProductDetailPage() {
                 }}
                 className={`btn-primary flex-1 text-center transition-all ${
                   addedToCart ? "bg-[#C9A227] border-[#C9A227]" : ""
-                }`}
+                } disabled:cursor-not-allowed disabled:opacity-50`}
+                disabled={!canAddToCart || qty > selectedVariant.stock}
               >
                 <Link
                   to={addedToCart ? "/cart": ""}
                 >
-                {addedToCart ? "Go to Cart" : "Add to Cart"}
+                {!selectedVariant.isAvailable
+                  ? "Unavailable"
+                  : selectedVariant.stock < 1
+                    ? "Out of Stock"
+                    : addedToCart
+                      ? "Go to Cart"
+                      : "Add to Cart"}
                 </Link>
               </button>
               <button
                 onClick={handleBuyNow}
-                className="btn-gold flex-1"
+                className="btn-gold flex-1 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!canAddToCart || qty > selectedVariant.stock}
               >
                 Buy Now
               </button>
