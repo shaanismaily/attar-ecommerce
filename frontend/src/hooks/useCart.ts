@@ -162,6 +162,15 @@ function useCart() {
   }) => {
     setError("");
 
+    if (!variant.isAvailable || variant.stock < quantity) {
+      setError(
+        !variant.isAvailable
+          ? "This variant is currently unavailable"
+          : "This variant does not have enough stock",
+      );
+      return;
+    }
+
     if (!authStatus) {
       const existingCart = readGuestCartItems();
 
