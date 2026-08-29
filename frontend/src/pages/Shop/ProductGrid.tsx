@@ -12,10 +12,10 @@ function ProductGrid({ products }: ProductGridProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
       {products?.map((product) => {
-        const defaultVariant = product.variants[0];
-        const canAddToCart = Boolean(
-          defaultVariant?.isAvailable && defaultVariant.stock > 0,
-        );
+        const defaultVariant =
+          product.variants.find(
+            (variant) => variant.isAvailable && variant.stock > 0
+          ) ?? null;
 
         //   const wishlisted = isWishlisted(product.id);
         return (
@@ -42,15 +42,17 @@ function ProductGrid({ products }: ProductGridProps) {
                 </span>
               )}
             </div>
+            {/* 
             <button
               // onClick={() => toggleWishlist(product.id)}
               className="absolute top-3 right-3 z-10 w-8 h-8 bg-white/90 flex items-center justify-center shadow-sm hover:bg-white transition-all"
               aria-label="Wishlist"
             >
-              {/* <svg width="14" height="14" viewBox="0 0 24 24" fill={wishlisted ? "#C9A227" : "none"} stroke={wishlisted ? "#C9A227" : "#888"} strokeWidth="1.8">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill={wishlisted ? "#C9A227" : "none"} stroke={wishlisted ? "#C9A227" : "#888"} strokeWidth="1.8">
                           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                        </svg> */}
+                        </svg> 
             </button>
+            */}
             <Link
               to={`/product/${product.slug}`}
               className="block overflow-hidden bg-[#f5f2ec] aspect-3/4"
@@ -86,7 +88,7 @@ function ProductGrid({ products }: ProductGridProps) {
                   className="font-display text-lg font-semibold text-[#0F5132]"
                   style={{ fontFamily: "var(--font-display)" }}
                 >
-                  ₹
+                  ₹{defaultVariant?.price}
                 </span>
                 {/* {product.originalPrice && (
                             <span className="text-sm text-[#bbb] line-through" style={{ fontFamily: "var(--font-sans)" }}>
@@ -97,7 +99,7 @@ function ProductGrid({ products }: ProductGridProps) {
               <div className="flex gap-2 mt-auto">
                 <button
                   onClick={async () => {
-                    if (!defaultVariant || !canAddToCart) return;
+                    if (!defaultVariant) return;
 
                     await addItemToCart({
                       variant: defaultVariant,
@@ -106,13 +108,11 @@ function ProductGrid({ products }: ProductGridProps) {
                     });
                   }}
                   className="btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={!canAddToCart}
+                  disabled={!defaultVariant}
                 >
-                  {!defaultVariant || !defaultVariant.isAvailable
-                    ? "Unavailable"
-                    : defaultVariant.stock < 1
-                      ? "Out of Stock"
-                      : "Add to Cart"}
+                  {!defaultVariant
+                    ? "Out of Stock"
+                    : "Add to Cart"}
                 </button>
                 <Link
                   to={`/product/${product.slug}`}

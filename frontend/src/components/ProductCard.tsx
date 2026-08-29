@@ -8,6 +8,11 @@ function ProductCard({ product }: { product: Product }) {
   const [hovered, setHovered] = useState(false);
   // const wishlisted = isWishlisted(product.slug);
 
+  const defaultVariant =
+    product.variants.find(
+      (variant) => variant.isAvailable && variant.stock > 0,
+    ) ?? null;
+
   return (
     <div
       className="product-card group bg-white relative flex flex-col"
@@ -17,35 +22,49 @@ function ProductCard({ product }: { product: Product }) {
       {/* Badges */}
       <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
         {product.isBestSeller && (
-          <span className="bg-[#0F5132] text-white text-[0.58rem] tracking-[0.12em] uppercase px-2 py-0.5 font-medium" style={{ fontFamily: "var(--font-sans)" }}>
+          <span
+            className="bg-[#0F5132] text-white text-[0.58rem] tracking-[0.12em] uppercase px-2 py-0.5 font-medium"
+            style={{ fontFamily: "var(--font-sans)" }}
+          >
             Bestseller
           </span>
         )}
         {product.isNewArrival && (
-          <span className="bg-[#C9A227] text-white text-[0.58rem] tracking-[0.12em] uppercase px-2 py-0.5 font-medium" style={{ fontFamily: "var(--font-sans)" }}>
+          <span
+            className="bg-[#C9A227] text-white text-[0.58rem] tracking-[0.12em] uppercase px-2 py-0.5 font-medium"
+            style={{ fontFamily: "var(--font-sans)" }}
+          >
             New
           </span>
         )}
-        {product.variants[0]?.price && (
-          <span className="bg-[#222] text-white text-[0.58rem] tracking-[0.12em] uppercase px-2 py-0.5 font-medium" style={{ fontFamily: "var(--font-sans)" }}>
+        {defaultVariant?.price && (
+          <span
+            className="bg-[#222] text-white text-[0.58rem] tracking-[0.12em] uppercase px-2 py-0.5 font-medium"
+            style={{ fontFamily: "var(--font-sans)" }}
+          >
             Sale
           </span>
         )}
       </div>
 
       {/* Wishlist */}
+      {/* 
       <button
         // onClick={() => toggleWishlist(product.slug)}
         className="absolute top-3 right-3 z-10 w-8 h-8 bg-white/90 flex items-center justify-center shadow-sm hover:bg-white transition-all duration-200"
         aria-label="Wishlist"
       >
-        {/* <svg width="15" height="15" viewBox="0 0 24 24" fill={wishlisted ? "#C9A227" : "none"} stroke={wishlisted ? "#C9A227" : "#888"} strokeWidth="1.8">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill={wishlisted ? "#C9A227" : "none"} stroke={wishlisted ? "#C9A227" : "#888"} strokeWidth="1.8">
           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-        </svg> */}
+        </svg> 
       </button>
+      */}
 
       {/* Image */}
-      <Link to={`/product/${product.slug}`} className="block overflow-hidden bg-[#f5f2ec] aspect-3/4">
+      <Link
+        to={`/product/${product.slug}`}
+        className="block overflow-hidden bg-[#f5f2ec] aspect-3/4"
+      >
         <img
           src={product.images[0].url}
           alt={product.name}
@@ -70,7 +89,10 @@ function ProductCard({ product }: { product: Product }) {
       <div className="p-4 flex flex-col flex-1">
         <div className="flex items-start justify-between gap-2 mb-2">
           <div>
-            <p className="text-[0.63rem] tracking-[0.2em] uppercase text-[#C9A227] mb-0.5" style={{ fontFamily: "var(--font-sans)" }}>
+            <p
+              className="text-[0.63rem] tracking-[0.2em] uppercase text-[#C9A227] mb-0.5"
+              style={{ fontFamily: "var(--font-sans)" }}
+            >
               {product.category.name}
             </p>
             <Link
@@ -84,29 +106,40 @@ function ProductCard({ product }: { product: Product }) {
         </div>
 
         <div className="flex items-center gap-2 mb-4">
-          <span className="font-display text-lg font-semibold text-[#0F5132]" style={{ fontFamily: "var(--font-display)" }}>
-            ₹{product.variants[0]?.price.toLocaleString()}
+          <span
+            className="font-display text-lg font-semibold text-[#0F5132]"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            ₹{defaultVariant?.price.toLocaleString()}
           </span>
-          {product.variants[0]?.price && (
-            <span className="text-sm text-[#aaa] line-through" style={{ fontFamily: "var(--font-sans)" }}>
-              ₹{product.variants[0]?.price.toLocaleString()}
+          {defaultVariant?.price && (
+            <span
+              className="text-sm text-[#aaa] line-through"
+              style={{ fontFamily: "var(--font-sans)" }}
+            >
+              ₹{defaultVariant?.price.toLocaleString()}
             </span>
           )}
         </div>
 
         <button
-          onClick={() => addItemToCart({
-            product,
-            variant: product.variants[0],
-            quantity: 1
-          })}
-          className="btn-primary w-full mt-auto text-center"
+          onClick={async () => {
+            if (!defaultVariant) return;
+
+            await addItemToCart({
+              variant: defaultVariant,
+              product,
+              quantity: 1,
+            });
+          }}
+          className="btn-primary w-full mt-auto text-center disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={!defaultVariant}
         >
-          Add to Cart
+          {!defaultVariant ? "Out of Stock" : "Add to Cart"}
         </button>
       </div>
     </div>
   );
 }
 
-export default ProductCard
+export default ProductCard;
