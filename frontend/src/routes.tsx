@@ -10,6 +10,9 @@ import {
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout/Checkout";
 import { Protected } from "./components/AuthLayout";
+import UserDashboard from "./pages/UserDashboard/UserDashboard";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
 
 export const router = createBrowserRouter([
     {
@@ -20,6 +23,8 @@ export const router = createBrowserRouter([
             { path: "shop", Component: Shop },
             { path: "product/:slug", Component: ProductDetailPage },
             { path: "cart", Component: Cart },
+            { path: "about", Component: About },
+            { path: "contact", Component: Contact },
             {
                 path: "checkout",
                 element: (
@@ -27,7 +32,23 @@ export const router = createBrowserRouter([
                         <Checkout />
                     </Protected>
                 )
-            }
+            },
+            {
+                path: "dashboard",
+                element: (
+                    <Protected authentication={true}>
+                        <UserDashboard />
+                    </Protected>
+                )
+            },
+            {
+                path: "dashboard/:section",
+                element: (
+                    <Protected authentication={true}>
+                        <UserDashboard />
+                    </Protected>
+                )
+            },
         ]
     },
     {
