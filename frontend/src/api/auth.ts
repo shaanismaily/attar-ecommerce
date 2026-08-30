@@ -1,5 +1,16 @@
 import client from "./client";
 
+export type User = {
+    _id: string;
+    fullName: string;
+    email: string;
+    role: string;
+    phone?: string;
+
+    createdAt: string;
+    updatedAt: string;
+}
+
 export type RegisterData = {
   fullName: string;
   phone?: string;
@@ -17,6 +28,13 @@ export type PasswordData = {
     oldPassword: string;
     newPassword: string;
 }
+
+export type ApiResponse<T> = {
+  statusCode: number;
+  data: T;
+  message: string;
+  success: boolean;
+};
 
 type RequireAtLeastOne<T> = {
   [K in keyof T]: Required<Pick<T, K>> & Partial<Omit<T, K>>;
@@ -50,8 +68,8 @@ export const changePassword = (data: PasswordData) => {
     return client.post("/users/change-password", data)
 }
 
-export const getCurrentUser = () => {
-    return client.get("/users/me")
+export const getCurrentUser = (signal?: AbortSignal) => {
+    return client.get<ApiResponse<User>>("/users/me", { signal })
 }
 
 export const updateAccountDetails = (data: AccountData) => {
