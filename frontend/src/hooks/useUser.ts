@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { getCurrentUser, type User } from "../api/auth";
+import { getCurrentUser, updateAccountDetails, type AccountData, type User } from "../api/auth";
 import axios from "axios";
 
 function useUser() {
@@ -47,7 +47,29 @@ function useUser() {
         }
     }, [refetch])
 
-    return { user, loading, error, refetch };
+    
+    const updateUserDetails = async(data: AccountData) => {
+        try {
+            await updateAccountDetails(data)
+            await refetch()
+            return { success: true }
+        } catch (error) {
+            if (axios.isAxiosError(error)) {
+                setError(error.response?.data?.message || error.message)
+            } else {
+                setError("Could not update user details")
+            }
+            throw error
+        }
+    }
+
+    return { 
+        user, 
+        loading, 
+        error, 
+        refetch, 
+        updateUserDetails 
+    };
 }
 
 export default useUser
