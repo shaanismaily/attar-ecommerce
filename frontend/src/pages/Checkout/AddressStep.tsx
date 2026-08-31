@@ -1,8 +1,12 @@
 import useAddress from "../../hooks/useAddress";
-import Input from "../../components/Input";
-import { useForm } from "react-hook-form";
-import { createAddress, type Address } from "../../api/addresses";
+import {
+  createAddress,
+  updateAddress,
+  deleteAddress,
+  type Address,
+} from "../../api/addresses";
 import { useState, useEffect } from "react";
+import AddressForm from "../../components/AddressForm";
 
 type AddressFormData = {
   firstName: string;
@@ -31,35 +35,92 @@ function AddressStep({
   setStep,
 }: AddressProps) {
   const { addresses, loading, error, refetch } = useAddress();
-
   const [showForm, setShowForm] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(
+    null,
+  );
+
+  const getAddressFormData = (
+    address: Address | null,
+  ): AddressFormData | undefined => {
+    if (!address) return undefined;
+
+    return {
+      firstName: address.firstName,
+      lastName: address.lastName || "",
+      phone: address.phone,
+      street: address.street,
+      landmark: address.landmark,
+      city: address.city,
+      state: address.state,
+      zipCode: address.zipCode,
+      addressType: address.addressType,
+      isDefault: address.isDefault,
+    };
+  };
+
+  const handleEdit = (address: Address) => {
+    setEditingAddress(address);
+    setShowForm(true);
+  };
+
+  const handleUpdate = async (data: AddressFormData) => {
+    if (!editingAddress) return;
+
+    try {
+      const response = await updateAddress(editingAddress._id, data);
+
+      const updatedAddress = response.data.data;
+
+      // If the edited address is currently selected,
+      // update the checkout selection too.
+      if (selectedAddressId === editingAddress._id) {
+        setSelectedAddress(updatedAddress);
+      }
+
+      setEditingAddress(null);
+      setShowForm(false);
+
+      await refetch();
+    } catch (error) {
+      console.error("Failed to update address:", error);
+      throw error;
+    }
+  };
+
+  const handleDelete = async (addressId: string) => {
+    try {
+      await deleteAddress(addressId);
+
+      // If deleted address was selected,
+      // clear the checkout selection.
+      if (selectedAddressId === addressId) {
+        setSelectedAddressId(null);
+        setSelectedAddress(null);
+      }
+
+      setShowDeleteConfirm(null);
+
+      await refetch();
+    } catch (error) {
+      console.error("Failed to delete address:", error);
+    }
+  };
 
   useEffect(() => {
     if (!selectedAddressId && addresses.length > 0) {
-            const defaultAddress =
-            addresses.find((address) => address.isDefault) ??
-            addresses[0];
+      const defaultAddress =
+        addresses.find((address) => address.isDefault) ?? addresses[0];
 
-            setSelectedAddressId(defaultAddress._id);
-            setSelectedAddress(defaultAddress);
+      setSelectedAddressId(defaultAddress._id);
+      setSelectedAddress(defaultAddress);
     }
-    }, [
-        addresses,
-        selectedAddressId,
-        setSelectedAddressId,
-        setSelectedAddress,
-    ]);
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-  } = useForm<AddressFormData>();
+  }, [addresses, selectedAddressId, setSelectedAddressId, setSelectedAddress]);
 
   const submit = async (data: AddressFormData) => {
     try {
       const response = await createAddress(data);
-
       const newAddress = response.data.data;
 
       // Automatically select newly created address
@@ -69,22 +130,16 @@ function AddressStep({
       // Hide form
       setShowForm(false);
 
-      // Clear form
-      reset();
-
       // Refresh addresses
       await refetch();
     } catch (error) {
       console.error("Failed to create address:", error);
+      throw error;
     }
   };
 
   if (loading && !error) {
-    return (
-      <div className="max-w-350 p-4 lg:p-6">
-        Loading addresses...
-      </div>
-    );
+    return <div className="max-w-350 p-4 lg:p-6">Loading addresses...</div>;
   }
 
   if (error && !loading) {
@@ -109,9 +164,7 @@ function AddressStep({
       {addresses.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">
-              Select Delivery Address
-            </h2>
+            <h2 className="text-xl font-semibold">Select Delivery Address</h2>
 
             <button
               type="button"
@@ -126,53 +179,113 @@ function AddressStep({
             const isSelected = selectedAddressId === address._id;
 
             return (
-              <button
+              <div
                 key={address._id}
-                type="button"
-                onClick={() => {
-                    setSelectedAddressId(address._id)
-                    setSelectedAddress(address)
-                }}
-                className={`w-full text-left border-2 rounded-2xl p-5 transition-all ${
-                  isSelected
-                    ? "border-[#0F5132] bg-[#FAF8F3]"
-                    : "border-[#e8e4d8] bg-white hover:border-[#C9A227]"
-                }`}
+                className={`
+        w-full
+        text-left
+        border-2
+        rounded-2xl
+        p-4 sm:p-5
+        transition-all
+        ${
+          isSelected
+            ? "border-[#0F5132] bg-[#FAF8F3]"
+            : "border-[#e8e4d8] bg-white"
+        }
+      `}
               >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-semibold">
-                      {address.firstName} {address.lastName}
-                    </h3>
+                {/* Selectable Address Area */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedAddressId(address._id);
+                    setSelectedAddress(address);
+                  }}
+                  className="w-full text-left"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-[#222]">
+                          {address.firstName} {address.lastName}
+                        </h3>
 
-                    <p className="mt-2 text-sm">
-                      {address.street}
-                      {address.landmark && `, ${address.landmark}`}
-                    </p>
+                        {address.isDefault && (
+                          <span className="text-[10px] tracking-wider uppercase bg-[#0F5132] text-white px-2 py-1 rounded-sm">
+                            Default
+                          </span>
+                        )}
+                      </div>
 
-                    <p className="text-sm">
-                      {address.city}, {address.state} - {address.zipCode}
-                    </p>
+                      <p className="mt-2 text-sm text-[#666] leading-6">
+                        {address.street}
+                        {address.landmark && `, ${address.landmark}`}
+                      </p>
 
-                    <p className="mt-2 text-sm">
-                      {address.phone}
-                    </p>
+                      <p className="text-sm text-[#666]">
+                        {address.city}, {address.state} - {address.zipCode}
+                      </p>
+
+                      <p className="mt-2 text-sm text-[#666]">
+                        {address.phone}
+                      </p>
+                    </div>
+
+                    {/* Selection indicator */}
+                    <div
+                      className={`
+              shrink-0
+              w-5 h-5
+              rounded-full
+              border-2
+              flex items-center justify-center
+              mt-1
+              ${isSelected ? "border-[#0F5132]" : "border-[#d0ccc0]"}
+            `}
+                    >
+                      {isSelected && (
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#0F5132]" />
+                      )}
+                    </div>
                   </div>
+                </button>
 
-                  {/* Selection indicator */}
-                  <div
-                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                      isSelected
-                        ? "border-[#0F5132]"
-                        : "border-[#d0ccc0]"
-                    }`}
+                {/* Actions */}
+                <div className="flex items-center gap-4 mt-4 pt-3 border-t border-[#e8e4d8]">
+                  <button
+                    type="button"
+                    onClick={() => handleEdit(address)}
+                    className="
+            text-xs
+            font-medium
+            tracking-wide
+            text-[#0F5132]
+            hover:text-[#C9A227]
+            transition-colors
+          "
                   >
-                    {isSelected && (
-                      <div className="w-2.5 h-2.5 rounded-full bg-[#0F5132]" />
-                    )}
-                  </div>
+                    Edit
+                  </button>
+
+                  <span className="w-px h-3 bg-[#d8d4ca]" />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(address._id)}
+                    className="
+            text-xs
+            font-medium
+            tracking-wide
+            text-[#999]
+            hover:text-red-500
+            transition-colors
+          "
+                  >
+                    Remove
+                  </button>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -181,9 +294,7 @@ function AddressStep({
       {/* No addresses */}
       {addresses.length === 0 && (
         <div className="mb-6">
-          <h2 className="text-xl font-semibold">
-            Add Delivery Address
-          </h2>
+          <h2 className="text-xl font-semibold">Add Delivery Address</h2>
 
           <p className="text-sm text-gray-500 mt-1">
             You don't have any saved addresses yet.
@@ -193,126 +304,51 @@ function AddressStep({
 
       {/* Address form */}
       {(addresses.length === 0 || showForm) && (
-        <form
-          onSubmit={handleSubmit(submit)}
-          className="mt-8"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <Input
-              label="FIRST NAME"
-              className="input-luxury"
-              {...register("firstName", {
-                required: true,
-              })}
-            />
+        <AddressForm
+          onSubmit={editingAddress ? handleUpdate : submit}
+          onCancel={() => {
+            setShowForm(false);
+            setEditingAddress(null);
+          }}
+          initialData={getAddressFormData(editingAddress)}
+          isEditing={!!editingAddress}
+        />
+      )}
 
-            <Input
-              label="LAST NAME"
-              className="input-luxury"
-              {...register("lastName")}
-            />
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
+            <h3
+              className="text-lg font-semibold text-[#222]"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              Remove Address?
+            </h3>
 
-            <Input
-              label="PHONE NUMBER"
-              className="input-luxury"
-              {...register("phone", {
-                required: true,
-              })}
-            />
+            <p className="mt-2 text-sm leading-6 text-[#666]">
+              Are you sure you want to remove this address? This action cannot
+              be undone.
+            </p>
 
-            <Input
-              label="PIN CODE"
-              className="input-luxury"
-              {...register("zipCode", {
-                required: true,
-              })}
-            />
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(null)}
+                className="btn-outline flex-1 text-[#C9A227]"
+              >
+                Cancel
+              </button>
 
-            <Input
-              label="CITY"
-              className="input-luxury"
-              {...register("city", {
-                required: true,
-              })}
-            />
-
-            <Input
-              label="STATE"
-              className="input-luxury"
-              {...register("state", {
-                required: true,
-              })}
-            />
-
-            <div className="md:col-span-2">
-              <Input
-                label="ADDRESS LINE 1"
-                className="input-luxury"
-                placeholder="House No., Street"
-                {...register("street", {
-                  required: true,
-                })}
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <Input
-                label="ADDRESS LINE 2 (OPTIONAL)"
-                className="input-luxury"
-                placeholder="Area, Landmark"
-                {...register("landmark")}
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <p className="mb-3">ADDRESS TYPE</p>
-
-              <div className="flex gap-6">
-                <Input
-                  type="radio"
-                  label="HOME"
-                  value="home"
-                  {...register("addressType", {
-                    required: true,
-                  })}
-                />
-
-                <Input
-                  type="radio"
-                  label="WORK"
-                  value="work"
-                  {...register("addressType", {
-                    required: true,
-                  })}
-                />
-
-                <Input
-                  type="radio"
-                  label="OTHER"
-                  value="other"
-                  {...register("addressType", {
-                    required: true,
-                  })}
-                />
-              </div>
-            </div>
-
-            <div className="md:col-span-2">
-              <Input
-                type="checkbox"
-                label="DEFAULT ADDRESS"
-                {...register("isDefault")}
-              />
+              <button
+                type="button"
+                onClick={() => handleDelete(showDeleteConfirm)}
+                className="flex-1 rounded-sm bg-[#0F5132] px-4 py-3 text-sm font-medium text-white transition hover:bg-[#0b4027]"
+              >
+                Remove
+              </button>
             </div>
           </div>
-
-          <button
-            type="submit"
-            className="btn-primary mt-6"
-          >
-            Save Address
-          </button>
-        </form>
+        </div>
       )}
 
       {/* Continue */}
