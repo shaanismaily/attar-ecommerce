@@ -40,7 +40,6 @@ function Navbar() {
   const navLinks = [
     { to: "/", label: "Home" },
     { to: "/shop", label: "Shop" },
-    { to: "/collections", label: "Collections" },
     { to: "/about", label: "About" },
     { to: "/contact", label: "Contact" },
   ];

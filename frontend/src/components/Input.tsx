@@ -36,71 +36,38 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
 
           <span
             className={`
-                    relative
-                    flex
-                    h-5
-                    w-5
-                    shrink-0
-                    items-center
-                    justify-center
-                    border
-                    border-[#cfc9ba]
-                    bg-white
-                    transition-all
-                    duration-200
+              relative
+              flex
+              h-4
+              w-4
+              shrink-0
+              items-center
+              justify-center
+              border
+              border-[#cfc9ba]
+              bg-white
+              transition-all
+              duration-200
 
-                    ${type === "checkbox" ? "rounded-[3px]" : "rounded-full"}
+              ${type === "checkbox" ? "rounded-[3px]" : "rounded-full"}
 
-                    peer-checked:border-[#0F5132]
-                    peer-checked:bg-[#0F5132]
+              peer-checked:border-[#0F5132]
+              peer-checked:bg-[#0F5132]
 
-                    peer-focus-visible:ring-2
-                    peer-focus-visible:ring-[#C9A227]/30
+              peer-focus-visible:ring-2
+              peer-focus-visible:ring-[#C9A227]/30
 
-                    group-hover:border-[#C9A227]
-                `}
-          >
-            {type === "checkbox" ? (
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                className="
-                            h-3.5
-                            w-3.5
-                            text-white
-                            opacity-0
-                            scale-75
-                            transition-all
-                            duration-200
-                            peer-checked:opacity-100
-                            peer-checked:scale-100
-                        "
-              >
-                <path
-                  d="M5 12.5 9.5 17 19 7"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            ) : (
-              <span
-                className="
-                            h-2
-                            w-2
-                            rounded-full
-                            bg-[#C9A227]
-                            opacity-0
-                            scale-50
-                            transition-all
-                            duration-200
-                            peer-checked:opacity-100
-                            peer-checked:scale-100
-                        "
-              />
-            )}
-          </span>
+              group-hover:border-[#C9A227]
+
+              peer-checked:after:block
+              peer-checked:after:h-2
+              peer-checked:after:w-1
+              peer-checked:after:rotate-45
+              peer-checked:after:border-b-2
+              peer-checked:after:border-r-2
+              peer-checked:after:border-white
+            `}
+          />
 
           {label && (
             <span
