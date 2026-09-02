@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { login as userLogin } from "../api/auth";
 import { useDispatch } from "react-redux";
-import { useNavigate, Link } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import type { LoginData } from "../api/auth";
 import { useForm } from "react-hook-form";
 import { login as storeLogin } from "../store/authSlice";
 import Input from "./Input";
 import axios from "axios";
+import { mergeCart } from "../api/cart";
 
 type LoginFormData = {
   identifier: string;
@@ -16,6 +17,7 @@ type LoginFormData = {
 function Login() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [error, setError] = useState("");
   const { register, handleSubmit } = useForm<LoginFormData>();
@@ -36,8 +38,23 @@ function Login() {
 
       const response = await userLogin(payload);
 
+      const items = localStorage.getItem("cartItems");
+
+      if (items) {
+        const cartItems = JSON.parse(items);
+
+        if (Array.isArray(cartItems) && cartItems.length > 0) {
+          await mergeCart(cartItems);
+          localStorage.removeItem("cartItems");
+        }
+      }
+
       dispatch(storeLogin(response.data.data.user));
-      navigate("/");
+      const from = location.state?.from;
+      const destination = from
+        ? `${from.pathname}${from.search}${from.hash}`
+        : "/";
+      navigate(destination, { replace: true });
     } catch (error) {
       if (axios.isAxiosError(error)) {
         setError(error.response?.data?.message ?? "Login failed");
