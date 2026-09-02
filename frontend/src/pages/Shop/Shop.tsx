@@ -7,6 +7,7 @@ import ShopHeader from "./ShopHeader";
 import ShopToolbar from "./ShopToolbar";
 import Pagination from "../../components/Pagination";
 import ProductGrid from "./ProductGrid";
+import ShopSkeleton from "./ShopSkeleton";
 
 type SortOption = "name" | "createdAt";
 
@@ -129,7 +130,9 @@ function Shop() {
             )}
 
             {/* Empty */}
-            {!loading && !error && products?.length === 0 ? (
+            {loading ? (
+              <ShopSkeleton />
+            ) : !error && products?.length === 0 ? (
               <div className="py-24 text-center">
                 <p className="text-4xl mb-4">✦</p>
 
