@@ -15,24 +15,46 @@ export type Variant = {
   isAvailable: boolean;
 };
 
+interface IFragranceNotes {
+    description?: string;
+    notes: string[];
+}
+
 export type Product = {
-  _id: string;
-  name: string;
-  slug: string;
-  description: string;
-  isFeatured: boolean;
-  isBestSeller: boolean;
-  isNewArrival: boolean;
-  isPublished: boolean;
-  images: {
-    url: string;
-    publicId: string;
-  }[];
-  category: Category;
-  variants: Variant[];
-  createdAt: string;
-  updatedAt: string;
-};
+    _id: string;
+    name: string;
+    slug: string;
+    tagline?: string;
+    description: string;
+
+    isFeatured: boolean;
+    isBestSeller: boolean;
+    isNewArrival: boolean;
+    isPublished: boolean;
+
+    gender: "men" | "women" | "unisex";
+
+    images: {
+        url: string;
+        publicId: string;
+    }[];
+
+    category: Category;
+    variants: Variant[];
+
+    fragranceNotes: {
+        top: IFragranceNotes;
+        heart: IFragranceNotes;
+        base: IFragranceNotes;
+    };
+
+    longevity: string;
+    sillage: string;
+    concentration: string;
+
+    createdAt?: Date;
+    updatedAt?: Date;
+}
 
 export type RelatedProductResponse = {
   _id: string;
