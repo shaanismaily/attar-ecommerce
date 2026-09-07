@@ -19,6 +19,17 @@ const parseBoolean = (value: unknown): boolean | undefined => {
   return undefined;
 };
 
+type FragranceNoteSection = {
+  description?: string;
+  notes: string[];
+};
+
+type FragranceNotes = {
+  top: FragranceNoteSection;
+  heart: FragranceNoteSection;
+  base: FragranceNoteSection;
+};
+
 const createProduct = asyncHandler(async (req, res) => {
   const {
     name,
@@ -89,26 +100,43 @@ const createProduct = asyncHandler(async (req, res) => {
   // Parse fragrance notes
   // ------------------------------------------
 
-  let parsedFragranceNotes;
-
-  try {
-    parsedFragranceNotes =
-      typeof fragranceNotes === "string"
-        ? JSON.parse(fragranceNotes)
-        : fragranceNotes;
-  } catch {
-    throw new ApiError(400, "Invalid fragrance notes format");
-  }
+  const parsedFragranceNotes: FragranceNotes =
+    typeof fragranceNotes === "string"
+      ? JSON.parse(fragranceNotes)
+      : fragranceNotes;
 
   if (!parsedFragranceNotes || typeof parsedFragranceNotes !== "object") {
     throw new ApiError(400, "Fragrance notes are required");
   }
 
-  const { top, heart, base } = parsedFragranceNotes;
+  const { top, heart, base } = parsedFragranceNotes as FragranceNotes;
 
   if (!top || !heart || !base) {
     throw new ApiError(400, "Top, heart and base notes are required");
   }
+
+  const productFragranceNotes: FragranceNotes = {
+    top: {
+      ...(top.description?.trim()
+        ? { description: top.description.trim() }
+        : {}),
+      notes: top.notes.map((note) => note.trim()),
+    },
+
+    heart: {
+      ...(heart.description?.trim()
+        ? { description: heart.description.trim() }
+        : {}),
+      notes: heart.notes.map((note) => note.trim()),
+    },
+
+    base: {
+      ...(base.description?.trim()
+        ? { description: base.description.trim() }
+        : {}),
+      notes: base.notes.map((note) => note.trim()),
+    },
+  };
 
   // ------------------------------------------
   // Validate note arrays
@@ -235,22 +263,7 @@ const createProduct = asyncHandler(async (req, res) => {
 
     gender: validatedGender,
 
-    fragranceNotes: {
-      top: {
-        description: top.description?.trim(),
-        notes: top.notes.map((note) => note.trim()),
-      },
-
-      heart: {
-        description: heart.description?.trim(),
-        notes: heart.notes.map((note) => note.trim()),
-      },
-
-      base: {
-        description: base.description?.trim(),
-        notes: base.notes.map((note) => note.trim()),
-      },
-    },
+    fragranceNotes: productFragranceNotes,
 
     longevity: longevity.trim(),
     sillage: sillage.trim(),
@@ -283,459 +296,334 @@ const createProduct = asyncHandler(async (req, res) => {
 });
 
 const updateProduct = asyncHandler(async (req, res) => {
-    const {
-        name,
-        tagline,
-        description,
-        category,
-        gender,
-        fragranceNotes,
-        longevity,
-        sillage,
-        concentration,
-        isFeatured,
-        isNewArrival,
-        isPublished,
-        isBestSeller,
-    } = req.body;
+  const {
+    name,
+    tagline,
+    description,
+    category,
+    gender,
+    fragranceNotes,
+    longevity,
+    sillage,
+    concentration,
+    isFeatured,
+    isNewArrival,
+    isPublished,
+    isBestSeller,
+  } = req.body;
 
-    const { productId } = req.params;
+  const { productId } = req.params;
 
-    // ------------------------------------------
-    // Check if at least one field is provided
-    // ------------------------------------------
+  // ------------------------------------------
+  // Check if at least one field is provided
+  // ------------------------------------------
 
-    const hasUpdate =
-        name !== undefined ||
-        tagline !== undefined ||
-        description !== undefined ||
-        category !== undefined ||
-        gender !== undefined ||
-        fragranceNotes !== undefined ||
-        longevity !== undefined ||
-        sillage !== undefined ||
-        concentration !== undefined ||
-        isFeatured !== undefined ||
-        isNewArrival !== undefined ||
-        isPublished !== undefined ||
-        isBestSeller !== undefined;
+  const hasUpdate =
+    name !== undefined ||
+    tagline !== undefined ||
+    description !== undefined ||
+    category !== undefined ||
+    gender !== undefined ||
+    fragranceNotes !== undefined ||
+    longevity !== undefined ||
+    sillage !== undefined ||
+    concentration !== undefined ||
+    isFeatured !== undefined ||
+    isNewArrival !== undefined ||
+    isPublished !== undefined ||
+    isBestSeller !== undefined;
 
-    if (!hasUpdate) {
-        throw new ApiError(
-            400,
-            "At least one field is required"
-        );
+  if (!hasUpdate) {
+    throw new ApiError(400, "At least one field is required");
+  }
+
+  // ------------------------------------------
+  // Find product
+  // ------------------------------------------
+
+  const product = await Product.findById(productId);
+
+  if (!product) {
+    throw new ApiError(404, "Product not found");
+  }
+
+  // ------------------------------------------
+  // Name + slug
+  // ------------------------------------------
+
+  if (name !== undefined) {
+    if (typeof name !== "string" || !name.trim()) {
+      throw new ApiError(400, "Product name cannot be empty");
+    }
+
+    const newSlug = slugify(name, {
+      lower: true,
+      strict: true,
+    });
+
+    const existingProduct = await Product.findOne({
+      slug: newSlug,
+      _id: { $ne: product._id },
+    });
+
+    if (existingProduct) {
+      throw new ApiError(409, "A product with this name already exists");
+    }
+
+    product.name = name.trim();
+  }
+
+  // ------------------------------------------
+  // Tagline
+  // ------------------------------------------
+
+  if (tagline !== undefined) {
+    if (typeof tagline !== "string") {
+      throw new ApiError(400, "Invalid tagline");
+    }
+
+    // Allow empty tagline to remove it
+    product.tagline = tagline.trim() || undefined;
+  }
+
+  // ------------------------------------------
+  // Description
+  // ------------------------------------------
+
+  if (description !== undefined) {
+    if (typeof description !== "string" || !description.trim()) {
+      throw new ApiError(400, "Product description cannot be empty");
+    }
+
+    product.description = description.trim();
+  }
+
+  // ------------------------------------------
+  // Category
+  // ------------------------------------------
+
+  if (category !== undefined) {
+    if (typeof category !== "string" || !mongoose.isValidObjectId(category)) {
+      throw new ApiError(400, "Invalid category");
+    }
+
+    const categoryExists = await Category.findById(category);
+
+    if (!categoryExists) {
+      throw new ApiError(404, "Category not found");
+    }
+
+    product.category = categoryExists._id;
+  }
+
+  // ------------------------------------------
+  // Gender
+  // ------------------------------------------
+
+  if (gender !== undefined) {
+    const allowedGenders = ["men", "women", "unisex"] as const;
+
+    type Gender = (typeof allowedGenders)[number];
+
+    if (
+      typeof gender !== "string" ||
+      !allowedGenders.includes(gender as Gender)
+    ) {
+      throw new ApiError(400, "Invalid gender");
+    }
+
+    product.gender = gender as Gender;
+  }
+
+  // ------------------------------------------
+  // Fragrance notes
+  // ------------------------------------------
+
+  if (fragranceNotes !== undefined) {
+    let parsedFragranceNotes;
+
+    try {
+      parsedFragranceNotes =
+        typeof fragranceNotes === "string"
+          ? JSON.parse(fragranceNotes)
+          : fragranceNotes;
+    } catch {
+      throw new ApiError(400, "Invalid fragrance notes format");
+    }
+
+    if (!parsedFragranceNotes || typeof parsedFragranceNotes !== "object") {
+      throw new ApiError(400, "Fragrance notes are required");
+    }
+
+    const { top, heart, base } = parsedFragranceNotes as Record<
+      string,
+      unknown
+    >;
+
+    if (!top || !heart || !base) {
+      throw new ApiError(400, "Top, heart and base notes are required");
     }
 
     // ------------------------------------------
-    // Find product
+    // Validate note sections
     // ------------------------------------------
 
-    const product = await Product.findById(productId);
+    const isValidNoteSection = (
+      section: unknown
+    ): section is {
+      description?: string;
+      notes: string[];
+    } => {
+      if (!section || typeof section !== "object") {
+        return false;
+      }
 
-    if (!product) {
-        throw new ApiError(
-            404,
-            "Product not found"
-        );
+      const value = section as Record<string, unknown>;
+
+      return (
+        Array.isArray(value.notes) &&
+        value.notes.length > 0 &&
+        value.notes.every(
+          (note) => typeof note === "string" && note.trim().length > 0
+        ) &&
+        (value.description === undefined ||
+          typeof value.description === "string")
+      );
+    };
+
+    if (
+      !isValidNoteSection(top) ||
+      !isValidNoteSection(heart) ||
+      !isValidNoteSection(base)
+    ) {
+      throw new ApiError(400, "Invalid fragrance notes");
     }
 
     // ------------------------------------------
-    // Name + slug
+    // Update fragrance notes
     // ------------------------------------------
 
-    if (name !== undefined) {
-        if (
-            typeof name !== "string" ||
-            !name.trim()
-        ) {
-            throw new ApiError(
-                400,
-                "Product name cannot be empty"
-            );
-        }
+    product.fragranceNotes = {
+      top: {
+        description: top.description?.trim(),
+        notes: top.notes.map((note) => note.trim()),
+      },
 
-        const newSlug = slugify(name, {
-            lower: true,
-            strict: true,
-        });
+      heart: {
+        description: heart.description?.trim(),
+        notes: heart.notes.map((note) => note.trim()),
+      },
 
-        const existingProduct =
-            await Product.findOne({
-                slug: newSlug,
-                _id: { $ne: product._id },
-            });
+      base: {
+        description: base.description?.trim(),
+        notes: base.notes.map((note) => note.trim()),
+      },
+    };
+  }
 
-        if (existingProduct) {
-            throw new ApiError(
-                409,
-                "A product with this name already exists"
-            );
-        }
+  // ------------------------------------------
+  // Longevity
+  // ------------------------------------------
 
-        product.name = name.trim();
+  if (longevity !== undefined) {
+    if (typeof longevity !== "string" || !longevity.trim()) {
+      throw new ApiError(400, "Longevity cannot be empty");
     }
 
-    // ------------------------------------------
-    // Tagline
-    // ------------------------------------------
+    product.longevity = longevity.trim();
+  }
 
-    if (tagline !== undefined) {
-        if (
-            typeof tagline !== "string"
-        ) {
-            throw new ApiError(
-                400,
-                "Invalid tagline"
-            );
-        }
+  // ------------------------------------------
+  // Sillage
+  // ------------------------------------------
 
-        // Allow empty tagline to remove it
-        product.tagline =
-            tagline.trim() || undefined;
+  if (sillage !== undefined) {
+    if (typeof sillage !== "string" || !sillage.trim()) {
+      throw new ApiError(400, "Sillage cannot be empty");
     }
 
-    // ------------------------------------------
-    // Description
-    // ------------------------------------------
+    product.sillage = sillage.trim();
+  }
 
-    if (description !== undefined) {
-        if (
-            typeof description !== "string" ||
-            !description.trim()
-        ) {
-            throw new ApiError(
-                400,
-                "Product description cannot be empty"
-            );
-        }
+  // ------------------------------------------
+  // Concentration
+  // ------------------------------------------
 
-        product.description =
-            description.trim();
+  if (concentration !== undefined) {
+    if (typeof concentration !== "string" || !concentration.trim()) {
+      throw new ApiError(400, "Concentration cannot be empty");
     }
 
-    // ------------------------------------------
-    // Category
-    // ------------------------------------------
+    product.concentration = concentration.trim();
+  }
 
-    if (category !== undefined) {
-        if (
-            typeof category !== "string" ||
-            !mongoose.isValidObjectId(category)
-        ) {
-            throw new ApiError(
-                400,
-                "Invalid category"
-            );
-        }
+  // ------------------------------------------
+  // Boolean fields
+  // ------------------------------------------
 
-        const categoryExists =
-            await Category.findById(category);
+  const featured = parseBoolean(isFeatured);
 
-        if (!categoryExists) {
-            throw new ApiError(
-                404,
-                "Category not found"
-            );
-        }
+  const bestSeller = parseBoolean(isBestSeller);
 
-        product.category = categoryExists._id;
-    }
+  const newArrival = parseBoolean(isNewArrival);
 
-    // ------------------------------------------
-    // Gender
-    // ------------------------------------------
+  const published = parseBoolean(isPublished);
 
-    if (gender !== undefined) {
-        const allowedGenders = [
-            "men",
-            "women",
-            "unisex",
-        ] as const;
+  // ------------------------------------------
+  // Featured product
+  // ------------------------------------------
 
-        type Gender =
-            (typeof allowedGenders)[number];
+  if (featured === true) {
+    await Product.updateMany(
+      {
+        _id: {
+          $ne: product._id,
+        },
+      },
+      {
+        isFeatured: false,
+      }
+    );
 
-        if (
-            typeof gender !== "string" ||
-            !allowedGenders.includes(
-                gender as Gender
-            )
-        ) {
-            throw new ApiError(
-                400,
-                "Invalid gender"
-            );
-        }
+    product.isFeatured = true;
+  } else if (featured === false) {
+    product.isFeatured = false;
+  }
 
-        product.gender = gender as Gender;
-    }
+  // ------------------------------------------
+  // Other boolean fields
+  // ------------------------------------------
 
-    // ------------------------------------------
-    // Fragrance notes
-    // ------------------------------------------
+  if (published !== undefined) {
+    product.isPublished = published;
+  }
 
-    if (fragranceNotes !== undefined) {
-        let parsedFragranceNotes;
+  if (bestSeller !== undefined) {
+    product.isBestSeller = bestSeller;
+  }
 
-        try {
-            parsedFragranceNotes =
-                typeof fragranceNotes === "string"
-                    ? JSON.parse(fragranceNotes)
-                    : fragranceNotes;
-        } catch {
-            throw new ApiError(
-                400,
-                "Invalid fragrance notes format"
-            );
-        }
+  if (newArrival !== undefined) {
+    product.isNewArrival = newArrival;
+  }
 
-        if (
-            !parsedFragranceNotes ||
-            typeof parsedFragranceNotes !== "object"
-        ) {
-            throw new ApiError(
-                400,
-                "Fragrance notes are required"
-            );
-        }
+  // ------------------------------------------
+  // Save product
+  // ------------------------------------------
 
-        const {
-            top,
-            heart,
-            base,
-        } = parsedFragranceNotes as Record<
-            string,
-            unknown
-        >;
+  await product.save();
 
-        if (
-            !top ||
-            !heart ||
-            !base
-        ) {
-            throw new ApiError(
-                400,
-                "Top, heart and base notes are required"
-            );
-        }
+  // ------------------------------------------
+  // Populate category
+  // ------------------------------------------
 
-        // ------------------------------------------
-        // Validate note sections
-        // ------------------------------------------
+  const updatedProduct = await Product.findById(product._id).populate(
+    "category",
+    "name slug"
+  );
 
-        const isValidNoteSection = (
-            section: unknown
-        ): section is {
-            description?: string;
-            notes: string[];
-        } => {
-            if (
-                !section ||
-                typeof section !== "object"
-            ) {
-                return false;
-            }
-
-            const value =
-                section as Record<
-                    string,
-                    unknown
-                >;
-
-            return (
-                Array.isArray(value.notes) &&
-                value.notes.length > 0 &&
-                value.notes.every(
-                    (note) =>
-                        typeof note === "string" &&
-                        note.trim().length > 0
-                ) &&
-                (
-                    value.description === undefined ||
-                    typeof value.description === "string"
-                )
-            );
-        };
-
-        if (
-            !isValidNoteSection(top) ||
-            !isValidNoteSection(heart) ||
-            !isValidNoteSection(base)
-        ) {
-            throw new ApiError(
-                400,
-                "Invalid fragrance notes"
-            );
-        }
-
-        // ------------------------------------------
-        // Update fragrance notes
-        // ------------------------------------------
-
-        product.fragranceNotes = {
-            top: {
-                description:
-                    top.description?.trim(),
-                notes: top.notes.map(
-                    (note) => note.trim()
-                ),
-            },
-
-            heart: {
-                description:
-                    heart.description?.trim(),
-                notes: heart.notes.map(
-                    (note) => note.trim()
-                ),
-            },
-
-            base: {
-                description:
-                    base.description?.trim(),
-                notes: base.notes.map(
-                    (note) => note.trim()
-                ),
-            },
-        };
-    }
-
-    // ------------------------------------------
-    // Longevity
-    // ------------------------------------------
-
-    if (longevity !== undefined) {
-        if (
-            typeof longevity !== "string" ||
-            !longevity.trim()
-        ) {
-            throw new ApiError(
-                400,
-                "Longevity cannot be empty"
-            );
-        }
-
-        product.longevity =
-            longevity.trim();
-    }
-
-    // ------------------------------------------
-    // Sillage
-    // ------------------------------------------
-
-    if (sillage !== undefined) {
-        if (
-            typeof sillage !== "string" ||
-            !sillage.trim()
-        ) {
-            throw new ApiError(
-                400,
-                "Sillage cannot be empty"
-            );
-        }
-
-        product.sillage =
-            sillage.trim();
-    }
-
-    // ------------------------------------------
-    // Concentration
-    // ------------------------------------------
-
-    if (concentration !== undefined) {
-        if (
-            typeof concentration !== "string" ||
-            !concentration.trim()
-        ) {
-            throw new ApiError(
-                400,
-                "Concentration cannot be empty"
-            );
-        }
-
-        product.concentration =
-            concentration.trim();
-    }
-
-    // ------------------------------------------
-    // Boolean fields
-    // ------------------------------------------
-
-    const featured =
-        parseBoolean(isFeatured);
-
-    const bestSeller =
-        parseBoolean(isBestSeller);
-
-    const newArrival =
-        parseBoolean(isNewArrival);
-
-    const published =
-        parseBoolean(isPublished);
-
-    // ------------------------------------------
-    // Featured product
-    // ------------------------------------------
-
-    if (featured === true) {
-        await Product.updateMany(
-            {
-                _id: {
-                    $ne: product._id,
-                },
-            },
-            {
-                isFeatured: false,
-            }
-        );
-
-        product.isFeatured = true;
-    } else if (featured === false) {
-        product.isFeatured = false;
-    }
-
-    // ------------------------------------------
-    // Other boolean fields
-    // ------------------------------------------
-
-    if (published !== undefined) {
-        product.isPublished = published;
-    }
-
-    if (bestSeller !== undefined) {
-        product.isBestSeller = bestSeller;
-    }
-
-    if (newArrival !== undefined) {
-        product.isNewArrival = newArrival;
-    }
-
-    // ------------------------------------------
-    // Save product
-    // ------------------------------------------
-
-    await product.save();
-
-    // ------------------------------------------
-    // Populate category
-    // ------------------------------------------
-
-    const updatedProduct =
-        await Product.findById(product._id)
-            .populate(
-                "category",
-                "name slug"
-            );
-
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(
-                200,
-                updatedProduct,
-                "Product updated successfully"
-            )
-        );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedProduct, "Product updated successfully"));
 });
 
 const deleteProduct = asyncHandler(async (req, res) => {
@@ -1012,7 +900,7 @@ const getProducts = asyncHandler(async (req, res) => {
     // --------------------------------------
 
     {
-    $project: {
+      $project: {
         _id: 1,
 
         name: 1,
@@ -1028,7 +916,7 @@ const getProducts = asyncHandler(async (req, res) => {
         longevity: 1,
         sillage: 1,
         concentration: 1,
-        
+
         startingPrice: "$minPrice",
 
         isFeatured: 1,
@@ -1037,17 +925,16 @@ const getProducts = asyncHandler(async (req, res) => {
         isPublished: 1,
 
         category: {
-            _id: 1,
-            name: 1,
-            slug: 1,
+          _id: 1,
+          name: 1,
+          slug: 1,
         },
 
         variants: 1,
         createdAt: 1,
         updatedAt: 1,
+      },
     },
-}
-
   ];
 
   const [products, totalProducts] = await Promise.all([
@@ -1113,7 +1000,10 @@ const getProduct = asyncHandler(async (req, res) => {
 
   const product = await Product.aggregate([
     {
-      $match: { slug },
+      $match: {
+        slug: slug.trim().toLowerCase(),
+        isPublished: true,
+      },
     },
     {
       $lookup: {
@@ -1135,27 +1025,22 @@ const getProduct = asyncHandler(async (req, res) => {
       },
     },
     {
-    $project: {
+      $project: {
         _id: 1,
-
         name: 1,
         slug: 1,
         tagline: 1,
         description: 1,
 
         category: {
-            _id: 1,
-            name: 1,
-            slug: 1,
+          _id: "$category._id",
+          name: "$category.name",
+          slug: "$category.slug",
         },
 
         gender: 1,
 
-        fragranceNotes: {
-            top: 1,
-            heart: 1,
-            base: 1,
-        },
+        fragranceNotes: 1,
 
         longevity: 1,
         sillage: 1,
@@ -1172,7 +1057,7 @@ const getProduct = asyncHandler(async (req, res) => {
 
         createdAt: 1,
         updatedAt: 1,
-    },
+      },
     },
   ]);
 
@@ -1185,6 +1070,7 @@ const getProduct = asyncHandler(async (req, res) => {
       $match: {
         category: product[0].category._id,
         _id: { $ne: product[0]._id },
+        isPublished: true,
       },
     },
     {
@@ -1193,6 +1079,16 @@ const getProduct = asyncHandler(async (req, res) => {
         localField: "_id",
         foreignField: "product",
         as: "variants",
+      },
+    },
+    {
+      $match: {
+        variants: {
+          $elemMatch: {
+            isAvailable: true,
+            stock: { $gt: 0 },
+          },
+        },
       },
     },
     {
@@ -1205,16 +1101,6 @@ const getProduct = asyncHandler(async (req, res) => {
     },
     {
       $unwind: "$category",
-    },
-    {
-      $match: {
-        variants: {
-          $elemMatch: {
-            isAvailable: true,
-            stock: { $gt: 0 },
-          },
-        },
-      },
     },
     {
       $addFields: {
@@ -1247,13 +1133,22 @@ const getProduct = asyncHandler(async (req, res) => {
         _id: 1,
         name: 1,
         slug: 1,
+        tagline: 1,
+        description: 1,
         images: 1,
-        startingPrice: 1,
+
         category: {
-          _id: 1,
-          name: 1,
-          slug: 1,
+          _id: "$category._id",
+          name: "$category.name",
+          slug: "$category.slug",
         },
+
+        startingPrice: 1,
+        variants: 1,
+
+        isFeatured: 1,
+        isBestSeller: 1,
+        isNewArrival: 1,
       },
     },
     {

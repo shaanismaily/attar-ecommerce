@@ -1,7 +1,7 @@
 import mongoose, { Model, Schema, Types } from "mongoose";
 import slugify from "slugify";
 
-interface IFragranceNotes {
+interface IFragranceNoteSection {
     description?: string;
     notes: string[];
 }
@@ -27,9 +27,9 @@ interface IProduct {
     category: Types.ObjectId;
 
     fragranceNotes: {
-        top: IFragranceNotes;
-        heart: IFragranceNotes;
-        base: IFragranceNotes;
+        top: IFragranceNoteSection;
+        heart: IFragranceNoteSection;
+        base: IFragranceNoteSection;
     };
 
     longevity: string;
