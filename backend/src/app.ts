@@ -34,11 +34,23 @@ app.use("/api/v1", variantRouter)
 app.use("/api/v1/address", addressRouter)
 
 const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
-  const statusCode = err.statusCode || 500;
+  const isValidationError = err?.name === "ValidationError";
+  const isDuplicateKeyError = err?.code === 11000;
+  const statusCode = isValidationError
+    ? 400
+    : isDuplicateKeyError
+      ? 409
+      : err.statusCode || 500;
+
+  const message = isValidationError
+    ? "Invalid address data"
+    : isDuplicateKeyError
+      ? "Address already exists"
+      : err.message || "Internal server error";
 
   res.status(statusCode).json({
     success: false,
-    message: err.message || "Internal server error",
+    message,
     errors: err.errors || [],
   });
 };

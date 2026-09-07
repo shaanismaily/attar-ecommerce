@@ -1,5 +1,6 @@
 import { Category } from "../models/category.model.js";
 import { Product } from "../models/product.model.js";
+import { Variant } from "../models/variant.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -1180,15 +1181,29 @@ const getFeaturedProduct = asyncHandler(async (_, res) => {
     throw new ApiError(404, "No featured product found");
   }
 
-  return res
-    .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        featuredProduct,
-        "Featured product fetched successfully"
-      )
-    );
+  const variants = await Variant.find({
+    product: featuredProduct._id,
+    isAvailable: true,
+    stock: { $gt: 0 },
+  })
+    .select("price")
+    .lean();
+
+  const startingPrice =
+    variants.length > 0
+      ? Math.min(...variants.map((variant) => variant.price))
+      : null;
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        ...featuredProduct,
+        startingPrice,
+      },
+      "Featured product fetched successfully"
+    )
+  );
 });
 
 export {
