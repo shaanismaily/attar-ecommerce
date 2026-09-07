@@ -1,12 +1,6 @@
 import client from "./client";
 import type { AxiosRequestConfig } from "axios";
 
-export type Category = {
-  _id: string;
-  name: string;
-  slug: string;
-};
-
 export type Variant = {
   _id: string;
   volume: number;
@@ -15,60 +9,60 @@ export type Variant = {
   isAvailable: boolean;
 };
 
-interface IFragranceNotes {
-    description?: string;
-    notes: string[];
-}
+type Image = {
+  url: string;
+  publicId: string;
+};
 
-export type Product = {
-    _id: string;
-    name: string;
-    slug: string;
-    tagline?: string;
-    description: string;
-
-    isFeatured: boolean;
-    isBestSeller: boolean;
-    isNewArrival: boolean;
-    isPublished: boolean;
-
-    gender: "men" | "women" | "unisex";
-
-    images: {
-        url: string;
-        publicId: string;
-    }[];
-
-    category: Category;
-    variants: Variant[];
-
-    fragranceNotes: {
-        top: IFragranceNotes;
-        heart: IFragranceNotes;
-        base: IFragranceNotes;
-    };
-
-    longevity: string;
-    sillage: string;
-    concentration: string;
-
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
-export type RelatedProductResponse = {
+type Category = {
   _id: string;
   name: string;
   slug: string;
-  images: {
-    url: string;
-    publicId: string;
-  }[];
+};
+
+type FragranceNoteSection = {
+  description?: string;
+  notes: string[];
+};
+
+type FragranceNotes = {
+  top: FragranceNoteSection;
+  heart: FragranceNoteSection;
+  base: FragranceNoteSection;
+};
+
+export type Product = {
+  _id: string;
+  name: string;
+  slug: string;
+  tagline?: string;
+  description: string;
+
+  isFeatured: boolean;
+  isBestSeller: boolean;
+  isNewArrival: boolean;
+  isPublished: boolean;
+
+  gender: "men" | "women" | "unisex";
+
+  images: Image[];
+  category: Category;
+  variants: Variant[];
+
+  fragranceNotes: FragranceNotes;
+
+  longevity: string;
+  sillage: string;
+  concentration: string;
+
+  startingPrice?: number;
+};
+
+export type RelatedProduct = Pick<
+  Product,
+  "_id" | "name" | "slug" | "images" | "category"
+> & {
   startingPrice: number;
-  category: {
-    name: string;
-    slug: string;
-  };
 };
 
 export type ProductListResponse = {
@@ -81,7 +75,7 @@ export type ProductListResponse = {
 
 export type ProductDetailResponse = {
   product: Product;
-  relatedProducts: RelatedProductResponse[];
+  relatedProducts: RelatedProduct[];
 };
 
 export type ApiResponse<T> = {
@@ -93,19 +87,15 @@ export type ApiResponse<T> = {
 
 export const getProducts = (
   params?: Record<string, unknown>,
-  signal?: AbortSignal,
-) => {
-  return client.get<ApiResponse<ProductListResponse>>("/products", {
+  signal?: AbortSignal
+) =>
+  client.get<ApiResponse<ProductListResponse>>("/products", {
     params,
     signal,
   });
-};
 
-export const getProduct = (slug: string) => {
-  return client.get<ApiResponse<ProductDetailResponse>>(
-    `/products/${slug}`,
-  );
-};
+export const getProduct = (slug: string) =>
+  client.get<ApiResponse<ProductDetailResponse>>(`/products/${slug}`);
 
 export const getFeaturedProduct = (config?: AxiosRequestConfig) =>
   client.get<ApiResponse<Product>>("/products/featured", config);

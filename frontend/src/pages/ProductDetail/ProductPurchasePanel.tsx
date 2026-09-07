@@ -26,6 +26,10 @@ function ProductPurchasePanel({
   onAddToCart,
   onBuyNow,
 }: ProductPurchasePanelProps) {
+  const capitalizeWords = (value?: string) =>
+    value ? value.replace(/\b[a-zA-Z]/g, (char) => char.toUpperCase()) : "";
+  const isInStock = selectedVariant.isAvailable && selectedVariant.stock > 0;
+
   return (
     <div className="lg:py-4">
       <p className="section-label mb-3">{product.category.name} Collection</p>
@@ -35,7 +39,20 @@ function ProductPurchasePanel({
       >
         {product.name}
       </h1>
-
+      <p
+        className="text-xl text-[#888] mb-5 font-light"
+        style={{ fontFamily: "var(--font-accent)", fontStyle: "italic" }}
+      >
+        {product.tagline}
+      </p>
+      <div className="flex items-center gap-3 mb-6 pb-6 border-b border-[#e8e4d8]">
+        <span
+          className={`text-sm font-medium ${isInStock ? "text-[#0F5132]" : "text-red-500"}`}
+          style={{ fontFamily: "var(--font-sans)" }}
+        >
+          {isInStock ? "✓ In Stock" : "Out of Stock"}
+        </span>
+      </div>
       <div className="flex items-baseline gap-3 mb-8">
         <span
           className="text-4xl font-bold text-[#0F5132]"
@@ -67,7 +84,7 @@ function ProductPurchasePanel({
               }`}
               style={{ fontFamily: "var(--font-sans)" }}
             >
-              {variant.volume} ml
+              {variant.volume}ml
             </button>
           ))}
         </div>
@@ -91,7 +108,11 @@ function ProductPurchasePanel({
           </span>
           <button
             type="button"
-            onClick={() => setQuantity((current) => Math.min(selectedVariant.stock, current + 1))}
+            onClick={() =>
+              setQuantity((current) =>
+                Math.min(selectedVariant.stock, current + 1),
+              )
+            }
             className="w-10 h-11 flex items-center justify-center hover:bg-[#f5f2ec] transition-colors"
             disabled={!canAddToCart || quantity >= selectedVariant.stock}
             aria-label="Increase quantity"
@@ -110,7 +131,7 @@ function ProductPurchasePanel({
           } disabled:cursor-not-allowed disabled:opacity-50`}
           disabled={!canAddToCart || quantity > selectedVariant.stock}
         >
-          {(!selectedVariant.isAvailable || selectedVariant.stock < 1)
+          {!selectedVariant.isAvailable || selectedVariant.stock < 1
             ? "Out of Stock"
             : addedToCart
               ? "Go to Cart"
@@ -128,10 +149,13 @@ function ProductPurchasePanel({
 
       <div className="grid grid-cols-2 gap-3 p-5 bg-white border border-[#e8e4d8] mb-6">
         {[
-          { label: "Concentration", value: product.concentration },
-          { label: "Gender", value: product.gender },
-          { label: "Longevity", value: product.longevity },
-          { label: "Sillage", value: product.sillage },
+          {
+            label: "Concentration",
+            value: capitalizeWords(product.concentration),
+          },
+          { label: "Gender", value: capitalizeWords(product.gender) },
+          { label: "Longevity", value: capitalizeWords(product.longevity) },
+          { label: "Sillage", value: capitalizeWords(product.sillage) },
         ].map((spec) => (
           <div key={spec.label}>
             <p className="text-[0.6rem] tracking-[0.2em] uppercase text-[#C9A227] mb-0.5">
@@ -145,7 +169,11 @@ function ProductPurchasePanel({
       </div>
 
       <div className="flex flex-wrap gap-4 text-xs text-[#888]">
-        {["✓ 100% Authentic", "✓ Free Shipping over ₹2999", "✓ Secure Checkout", "✓ Easy Returns"].map((badge) => (
+        {[
+          "✓ 100% Authentic",
+          "✓ Free Shipping over ₹999",
+          "✓ Secure Checkout",
+        ].map((badge) => (
           <span key={badge}>{badge}</span>
         ))}
       </div>

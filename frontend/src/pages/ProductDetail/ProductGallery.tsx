@@ -52,7 +52,7 @@ function ProductGallery({
         <img
           src={images[selectedImage]}
           alt={product.name}
-          className="w-full h-full transition-transform duration-300"
+          className="w-full h-full transition-transform duration-300 object-cover"
           style={
             zooming
               ? {

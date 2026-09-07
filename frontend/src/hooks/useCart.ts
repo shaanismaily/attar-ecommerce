@@ -23,7 +23,16 @@ import type { Product, Variant } from "../api/products";
 const normalizeCart = (data: {
   cart: Omit<Cart, "totalAmount">;
   totalAmount: number;
-}): Cart => ({ ...data.cart, totalAmount: data.totalAmount });
+}): Cart => {
+  // Populated references can be null when a product or variant was deleted.
+  const items = data.cart.items.filter((item) => item.product && item.variant);
+  const totalAmount = items.reduce(
+    (total, item) => total + item.priceAtAddition * item.quantity,
+    0,
+  );
+
+  return { ...data.cart, items, totalAmount };
+};
 
 type GuestCartItem = {
   variantId: string;

@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
-import type { RelatedProductResponse } from "../../api/products";
+import type { RelatedProduct } from "../../api/products";
 
 type RelatedProductsProps = {
-  products: RelatedProductResponse[];
+  products: RelatedProduct[];
   categoryName: string;
 };
 
@@ -14,9 +14,9 @@ function RelatedProducts({ products, categoryName }: RelatedProductsProps) {
       <div className="flex items-end justify-between mb-10">
         <div>
           <p className="section-label mb-3">You May Also Like</p>
-          <h2 className="text-3xl font-bold text-[#222]">
-            From the {categoryName} Collection
-          </h2>
+          <h2 className="text-3xl font-bold text-[#222]" style={{ fontFamily: "var(--font-display)" }}>
+                  From the {categoryName} Collection
+                </h2>
         </div>
         <Link
           to={`/shop?category=${categoryName}`}
@@ -44,13 +44,9 @@ function RelatedProducts({ products, categoryName }: RelatedProductsProps) {
               />
             </div>
             <div className="p-5">
-              <p className="text-[0.6rem] tracking-[0.2em] uppercase text-[#C9A227] mb-1">
-                {product.category.name}
-              </p>
-              <h3 className="font-semibold text-[#222] mb-2">{product.name}</h3>
-              <span className="text-lg font-bold text-[#0F5132]">
-                ₹{product.startingPrice.toLocaleString()}
-              </span>
+                    <p className="text-[0.6rem] tracking-[0.2em] uppercase text-[#C9A227] mb-1" style={{ fontFamily: "var(--font-sans)" }}>{product.category.name}</p>
+                    <h3 className="font-semibold text-[#222] mb-2" style={{ fontFamily: "var(--font-display)" }}>{product.name}</h3>
+                    <span className="text-lg font-bold text-[#0F5132]" style={{ fontFamily: "var(--font-display)" }}>₹{product.startingPrice.toLocaleString()}</span>
             </div>
           </Link>
         ))}
