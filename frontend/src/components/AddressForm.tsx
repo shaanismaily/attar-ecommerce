@@ -98,6 +98,10 @@ function AddressForm({ onSubmit, onCancel, initialData, isEditing = false }: Add
               className="input-luxury"
               {...register("phone", {
                 required: "Phone is required",
+                pattern: {
+                  value: /^[6-9]\d{9}$/,
+                  message: "Enter a valid 10-digit Indian phone number",
+                },
               })}
             />
             {errors.phone && (
@@ -115,6 +119,10 @@ function AddressForm({ onSubmit, onCancel, initialData, isEditing = false }: Add
               className="input-luxury"
               {...register("zipCode", {
                 required: "Pin code is required",
+                pattern: {
+                  value: /^\d{6}$/,
+                  message: "Enter a valid 6-digit PIN code",
+                },
               })}
             />
             {errors.zipCode && (
