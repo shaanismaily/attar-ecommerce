@@ -239,7 +239,9 @@ function Home() {
       </section>
 
       {/* FEATURED PRODUCT SPOTLIGHT */}
-      <section className="py-20 lg:py-28 bg-[#0a2e1c] relative overflow-hidden">
+      {featuredProduct && (
+
+        <section className="py-20 lg:py-28 bg-[#0a2e1c] relative overflow-hidden">
         <div className="absolute inset-0 arabic-pattern opacity-20" />
         <div className="max-w-350 mx-auto px-6 lg:px-10 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
@@ -249,48 +251,39 @@ function Home() {
                 className="text-4xl lg:text-5xl font-bold text-white mb-6 leading-tight"
                 style={{ fontFamily: "var(--font-display)" }}
               >
-                {featuredProduct?.name}
+                {featuredProduct.name}
                 <br />
-                <span className="gold-shimmer">The Crown Jewel</span>
+                <span className="gold-shimmer">{featuredProduct.tagline}</span>
               </h2>
               <p
                 className="text-[#d4cfbf]/70 text-base mb-4 leading-relaxed"
                 style={{ fontFamily: "var(--font-sans)" }}
               >
-                A majestic composition born from the heart of Assam's finest oud trees,
-                aged for over a decade to achieve unparalleled depth and complexity.
-              </p>
-              <p
-                className="text-[#C9A227] text-lg mb-8"
-                style={{ fontFamily: "var(--font-accent)", fontStyle: "italic" }}
-              >
-                "{featuredProduct?.description}"
+                {featuredProduct.description}
               </p>
               {/* Notes */}
               <div className="grid grid-cols-3 gap-4 mb-10">
-                {[
-                  { label: "Top Notes", notes: ["Saffron", "Black Pepper"] },
-                  { label: "Heart Notes", notes: ["Assam Oud", "Turkish Rose"] },
-                  { label: "Base Notes", notes: ["Ambergris", "Musk"] },
-                ].map((n) => (
-                  <div key={n.label}>
-                    <p className="text-[0.6rem] tracking-[0.2em] uppercase text-[#C9A227] mb-2" style={{ fontFamily: "var(--font-sans)" }}>
-                      {n.label}
-                    </p>
-                    {n.notes.map((note) => (
-                      <p key={note} className="text-sm text-white/60" style={{ fontFamily: "var(--font-sans)" }}>
-                        {note}
-                      </p>
-                    ))}
-                  </div>
-                ))}
-              </div>
+               {Object.entries(featuredProduct.fragranceNotes).map(
+  ([label, section]) => (
+    <div key={label}>
+      <p className="text-[0.6rem] tracking-[0.2em] uppercase text-[#C9A227] mb-2">
+        {label}
+      </p>
+
+      {section.notes.map((note) => (
+        <p key={note} className="text-sm text-white/60">
+          {note}
+        </p>
+      ))}
+    </div>
+  )
+)}
+            </div>
               <div className="flex items-center gap-6">
                 <div>
-                  <span className="text-3xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>₹4,800</span>
-                  <span className="text-sm text-[#888] line-through ml-2" style={{ fontFamily: "var(--font-sans)" }}>₹5,500</span>
+                  <span className="text-3xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>₹{featuredProduct.startingPrice}</span>
                 </div>
-                <Link to="/product/1" className="btn-gold flex-1 text-center inline-block">
+                <Link to={`/product/${featuredProduct.slug}`} className="btn-gold flex-1 text-center inline-block">
                   Shop Now
                 </Link>
               </div>
@@ -300,8 +293,8 @@ function Home() {
               <div className="relative mx-auto max-w-sm">
                 <div className="absolute -inset-4 bg-[#C9A227]/10 blur-3xl rounded-full" />
                 <img
-                  src={featuredProduct?.images?.[0]?.url ?? heroImage}
-                  alt={featuredProduct?.name ?? "Featured attar"}
+                  src={featuredProduct.images?.[0]?.url ?? heroImage}
+                  alt={featuredProduct.name ?? "Featured attar"}
                   className="relative w-full object-cover shadow-2xl"
                 />
                 {/* Floating badge */}
@@ -317,6 +310,7 @@ function Home() {
           </div>
         </div>
       </section>
+              )}
 
       {/* ── WHY CHOOSE US ── */}
       <section className="py-20 lg:py-28 max-w-350 mx-auto px-6 lg:px-10">
