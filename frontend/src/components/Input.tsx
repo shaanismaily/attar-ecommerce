@@ -1,5 +1,6 @@
-import { forwardRef, useId } from "react";
+import { forwardRef, useId, useState } from "react";
 import type { InputHTMLAttributes } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -8,6 +9,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, type = "text", className = "", ...props }, ref) => {
     const id = useId();
+    const [showPassword, setShowPassword] = useState(false);
 
     if (type === "checkbox" || type === "radio") {
       return (
@@ -104,13 +106,27 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           </label>
         )}
 
-        <input
-          id={id}
-          ref={ref}
-          type={type}
-          className={`w-full min-w-0 ${className}`}
-          {...props}
-        />
+        <div className="relative">
+          <input
+            id={id}
+            ref={ref}
+            type={type === "password" && showPassword ? "text" : type}
+            className={`w-full min-w-0 ${type === "password" ? "pr-10" : ""} ${className}`}
+            {...props}
+          />
+
+          {type === "password" && (
+            <button
+              type="button"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-(--color-stone) transition-colors hover:text-(--color-emerald) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-gold)/50"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              title={showPassword ? "Hide password" : "Show password"}
+              onClick={() => setShowPassword((visible) => !visible)}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          )}
+        </div>
       </div>
     );
   },
