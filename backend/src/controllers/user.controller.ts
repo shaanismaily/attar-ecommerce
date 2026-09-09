@@ -9,7 +9,8 @@ import { Types } from "mongoose";
 
 const options = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production"
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" as const : "lax" as const,
 }
 
 interface DecodedToken extends JwtPayload {
