@@ -9,12 +9,11 @@ import type { Product } from "../api/products";
 
 function Home() {
   const { collections, error, loading, refetch } = useCollections();
-  const { featuredProduct } = useFeaturedProduct()
+  const { featuredProduct } = useFeaturedProduct();
   const { products } = useProducts({
     bestSeller: true,
-    limit: 4
+    limit: 4,
   });
-
 
   return (
     <div className="bg-(--color-ivory)">
@@ -231,86 +230,111 @@ function Home() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-            {products.length > 0 && products.map((product: Product) => (
-              <ProductCard key={product._id} product={product} />
-            ))}
+            {products.length > 0 &&
+              products.map((product: Product) => (
+                <ProductCard key={product._id} product={product} />
+              ))}
           </div>
         </div>
       </section>
 
       {/* FEATURED PRODUCT SPOTLIGHT */}
       {featuredProduct && (
-
         <section className="py-20 lg:py-28 bg-[#0a2e1c] relative overflow-hidden">
-        <div className="absolute inset-0 arabic-pattern opacity-20" />
-        <div className="max-w-350 mx-auto px-6 lg:px-10 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <p className="section-label text-[#C9A227] mb-4">Featured Attar</p>
-              <h2
-                className="text-4xl lg:text-5xl font-bold text-white mb-6 leading-tight"
-                style={{ fontFamily: "var(--font-display)" }}
-              >
-                {featuredProduct.name}
-                <br />
-                <span className="gold-shimmer">{featuredProduct.tagline}</span>
-              </h2>
-              <p
-                className="text-[#d4cfbf]/70 text-base mb-4 leading-relaxed"
-                style={{ fontFamily: "var(--font-sans)" }}
-              >
-                {featuredProduct.description}
-              </p>
-              {/* Notes */}
-              <div className="grid grid-cols-3 gap-4 mb-10">
-               {Object.entries(featuredProduct.fragranceNotes).map(
-  ([label, section]) => (
-    <div key={label}>
-      <p className="text-[0.6rem] tracking-[0.2em] uppercase text-[#C9A227] mb-2">
-        {label}
-      </p>
-
-      {section.notes.map((note) => (
-        <p key={note} className="text-sm text-white/60">
-          {note}
-        </p>
-      ))}
-    </div>
-  )
-)}
-            </div>
-              <div className="flex items-center gap-6">
-                <div>
-                  <span className="text-3xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>₹{featuredProduct.startingPrice}</span>
-                </div>
-                <Link to={`/product/${featuredProduct.slug}`} className="btn-gold flex-1 text-center inline-block">
-                  Shop Now
-                </Link>
-              </div>
-            </div>
-
-            <div className="relative">
-              <div className="relative mx-auto max-w-sm">
-                <div className="absolute -inset-4 bg-[#C9A227]/10 blur-3xl rounded-full" />
-                <img
-                  src={featuredProduct.images?.[0]?.url ?? heroImage}
-                  alt={featuredProduct.name ?? "Featured attar"}
-                  className="relative w-full object-cover shadow-2xl"
-                />
-                {/* Floating badge */}
-                <div className="absolute -top-4 -right-4 w-20 h-20 bg-[#C9A227] flex flex-col items-center justify-center text-center shadow-lg">
-                  <span className="text-[#0a2e1c] text-[0.55rem] tracking-widest uppercase font-medium" style={{ fontFamily: "var(--font-sans)" }}>
-                    Rating
+          <div className="absolute inset-0 arabic-pattern opacity-20" />
+          <div className="max-w-350 mx-auto px-6 lg:px-10 relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+              <div>
+                <p className="section-label text-[#C9A227] mb-4">
+                  Featured Attar
+                </p>
+                <h2
+                  className="text-4xl lg:text-5xl font-bold text-white mb-6 leading-tight"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  {featuredProduct.name}
+                  <br />
+                  <span className="gold-shimmer">
+                    {featuredProduct.tagline}
                   </span>
-                  <span className="text-[#0a2e1c] text-2xl font-bold" style={{ fontFamily: "var(--font-display)" }}>4.9</span>
-                  <span className="text-[#0a2e1c] text-[0.5rem] tracking-widest" style={{ fontFamily: "var(--font-sans)" }}>★★★★★</span>
+                </h2>
+                <p
+                  className="text-[#d4cfbf]/70 text-base mb-4 leading-relaxed"
+                  style={{ fontFamily: "var(--font-sans)" }}
+                >
+                  {featuredProduct.description}
+                </p>
+                {/* Notes */}
+                <div className="grid grid-cols-3 gap-4 mb-10">
+                  {Object.entries(featuredProduct.fragranceNotes).map(
+                    ([label, section]) => (
+                      <div key={label}>
+                        <p className="text-[0.6rem] tracking-[0.2em] uppercase text-[#C9A227] mb-2">
+                          {label}
+                        </p>
+
+                        {section.notes.map((note) => (
+                          <p key={note} className="text-sm text-white/60">
+                            {note}
+                          </p>
+                        ))}
+                      </div>
+                    ),
+                  )}
+                </div>
+                <div className="flex items-center gap-6">
+                  <div>
+                    <span
+                      className="text-3xl font-bold text-white"
+                      style={{ fontFamily: "var(--font-display)" }}
+                    >
+                      ₹{featuredProduct.startingPrice}
+                    </span>
+                  </div>
+                  <Link
+                    to={`/product/${featuredProduct.slug}`}
+                    className="btn-gold flex-1 text-center inline-block"
+                  >
+                    Shop Now
+                  </Link>
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="relative mx-auto max-w-sm">
+                  <div className="absolute -inset-4 bg-[#C9A227]/10 blur-3xl rounded-full" />
+                  <img
+                    src={featuredProduct.images?.[0]?.url ?? heroImage}
+                    alt={featuredProduct.name ?? "Featured attar"}
+                    className="relative w-full object-cover shadow-2xl"
+                  />
+                  {/* Floating badge */}
+                  <div className="absolute -top-4 -right-4 w-20 h-20 bg-[#C9A227] flex flex-col items-center justify-center text-center shadow-lg">
+                    <span
+                      className="text-[#0a2e1c] text-[0.55rem] tracking-widest uppercase font-medium"
+                      style={{ fontFamily: "var(--font-sans)" }}
+                    >
+                      Rating
+                    </span>
+                    <span
+                      className="text-[#0a2e1c] text-2xl font-bold"
+                      style={{ fontFamily: "var(--font-display)" }}
+                    >
+                      4.9
+                    </span>
+                    <span
+                      className="text-[#0a2e1c] text-[0.5rem] tracking-widest"
+                      style={{ fontFamily: "var(--font-sans)" }}
+                    >
+                      ★★★★★
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
-              )}
+        </section>
+      )}
 
       {/* ── WHY CHOOSE US ── */}
       <section className="py-20 lg:py-28 max-w-350 mx-auto px-6 lg:px-10">
@@ -328,9 +352,7 @@ function Home() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {[
             {
-              icon: (
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              ),
+              icon: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
               title: "100% Original Attars",
               desc: "Every product is authenticated and sourced directly from master distillers across Arabia, India, and Southeast Asia.",
             },
@@ -364,7 +386,14 @@ function Home() {
           ].map((item, i) => (
             <div key={i} className="text-center group">
               <div className="w-16 h-16 border border-[#e0dbd0] flex items-center justify-center mx-auto mb-6 group-hover:border-[#C9A227] group-hover:bg-[#fdf9f0] transition-all duration-300">
-                <svg width="26" height="26" fill="none" stroke="#C9A227" strokeWidth="1.5" viewBox="0 0 24 24">
+                <svg
+                  width="26"
+                  height="26"
+                  fill="none"
+                  stroke="#C9A227"
+                  strokeWidth="1.5"
+                  viewBox="0 0 24 24"
+                >
                   {item.icon}
                 </svg>
               </div>
@@ -374,7 +403,10 @@ function Home() {
               >
                 {item.title}
               </h3>
-              <p className="text-sm text-[#888] leading-relaxed" style={{ fontFamily: "var(--font-sans)" }}>
+              <p
+                className="text-sm text-[#888] leading-relaxed"
+                style={{ fontFamily: "var(--font-sans)" }}
+              >
                 {item.desc}
               </p>
             </div>

@@ -1,6 +1,4 @@
-import type { Product } from "../../api/products";
-
-type SortOption = "name" | "createdAt";
+import type { Product, SortOption } from "../../api/products";
 
 type ToolbarProps = {
     products: Product[],
@@ -54,8 +52,11 @@ function ShopToolbar({ products, setSidebarOpen, setSortBy, sortBy }: ToolbarPro
               className="border border-[#d0ccc0] px-3 py-2 text-sm text-[#444] bg-white outline-none focus:border-[#C9A227] cursor-pointer"
               style={{ fontFamily: "var(--font-sans)" }}
             >
-              <option value="name">Name</option>
-              <option value="createdAt">Newest</option>
+              <option value="featured">Featured</option>
+              <option value="price-asc">Price: low to high</option>
+              <option value="price-desc">Price: high to low</option>
+              <option value="rating">Rating</option>
+              <option value="newest">Newest</option>
             </select>
           </div>
         </div>

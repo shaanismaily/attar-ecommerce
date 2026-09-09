@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import useProducts from "../../hooks/useProducts";
 import useCollections from "../../hooks/useCollection";
@@ -8,8 +8,7 @@ import ShopToolbar from "./ShopToolbar";
 import Pagination from "../../components/Pagination";
 import ProductGrid from "./ProductGrid";
 import ShopSkeleton from "./ShopSkeleton";
-
-type SortOption = "name" | "createdAt";
+import type { SortOption, Gender } from "../../api/products";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -18,13 +17,18 @@ function Shop() {
   const initCategory = searchParams.get("category");
 
   const { collections } = useCollections();
+  const genders: Gender[] = ["men", "women", "unisex"];
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     initCategory ? [initCategory] : [],
   );
+  const [selectedGender, setSelectedGender] = useState<Gender[]>([]);
+  const [selectedPriceRange, setSelectedPriceRange] = useState<[number, number]>([0, 10000]);
+  const priceRangeInitialized = useRef(false);
+  const [availability, setAvailability] = useState(false)
 
   const [page, setPage] = useState(1);
-  const [sortBy, setSortBy] = useState<SortOption>("name");
+  const [sortBy, setSortBy] = useState<SortOption>("featured");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const params = {
@@ -32,9 +36,26 @@ function Shop() {
     limit: ITEMS_PER_PAGE,
     category: selectedCategories.join(","),
     sortBy,
+    gender: selectedGender,
+    minPrice: selectedPriceRange[0],
+    maxPrice: selectedPriceRange[1],
   };
 
-  const { products, totalPages, error, loading, refetch } = useProducts(params);
+  const {
+    products,
+    totalPages,
+    error,
+    loading,
+    refetch,
+    priceRange,
+  } = useProducts(params);
+
+  useEffect(() => {
+    if (!priceRangeInitialized.current && priceRange[1] > 0) {
+      setSelectedPriceRange(priceRange);
+      priceRangeInitialized.current = true;
+    }
+  }, [priceRange]);
 
   const toggleCategory = (categoryId: string) => {
     setSelectedCategories((prev) =>
@@ -46,6 +67,20 @@ function Shop() {
     setPage(1);
   };
 
+  const toggleGender = (g: Gender) => {
+    setSelectedGender(prev =>
+      prev.includes(g)
+        ? prev.filter(x => x !== g)
+        : [...prev, g]
+    );
+
+    setPage(1);
+  }
+
+  const toggleSetAvailability = () => {
+    setAvailability(!availability)
+  }
+
   const handleSortChange = (sort: SortOption) => {
     setSortBy(sort);
     setPage(1);
@@ -53,6 +88,8 @@ function Shop() {
 
   const clearFilters = () => {
     setSelectedCategories([]);
+    setSelectedGender([]);
+    setSelectedPriceRange(priceRange);
     setPage(1);
   };
 
@@ -72,6 +109,14 @@ function Shop() {
                 collections={collections}
                 selectedCategories={selectedCategories}
                 toggleCategory={toggleCategory}
+                selectedGender={selectedGender}
+                genders={genders}
+                toggleGender={toggleGender}
+                priceRange={selectedPriceRange}
+                priceBounds={priceRange}
+                setPriceRange={setSelectedPriceRange}
+                availability={availability}
+                toggleAvailability={toggleSetAvailability}
               />
             </div>
           </aside>
@@ -100,6 +145,14 @@ function Shop() {
                   collections={collections}
                   selectedCategories={selectedCategories}
                   toggleCategory={toggleCategory}
+                  selectedGender={selectedGender}
+                  genders={genders}
+                  toggleGender={toggleGender}
+                  priceRange={selectedPriceRange}
+                  priceBounds={priceRange}
+                  setPriceRange={setSelectedPriceRange}
+                  availability={availability}
+                  toggleAvailability={toggleSetAvailability}
                 />
               </div>
             </div>
