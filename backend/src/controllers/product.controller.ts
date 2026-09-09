@@ -654,7 +654,6 @@ const getProducts = asyncHandler(async (req, res) => {
     newArrival,
     gender,
     sortBy,
-    sortType,
     category,
     minPrice,
     maxPrice,
@@ -749,20 +748,24 @@ const getProducts = asyncHandler(async (req, res) => {
   // Sorting
   // ------------------------------------------
 
-  const allowedSortFields = ["name", "createdAt", "updatedAt"] as const;
+  type SortOption =
+    | "featured"
+    | "price-asc"
+    | "price-desc"
+    | "rating"
+    | "newest";
 
-  let sortField: "name" | "createdAt" | "updatedAt" | "minPrice" = "createdAt";
-
-  if (sortBy === "price") {
-    sortField = "minPrice";
-  } else if (
-    typeof sortBy === "string" &&
-    allowedSortFields.includes(sortBy as (typeof allowedSortFields)[number])
-  ) {
-    sortField = sortBy as "name" | "createdAt" | "updatedAt";
-  }
-
-  const order = sortType === "asc" ? 1 : -1;
+  const requestedSort =
+    typeof sortBy === "string" ? (sortBy as SortOption) : "featured";
+  const sortOption: SortOption = [
+    "featured",
+    "price-asc",
+    "price-desc",
+    "rating",
+    "newest",
+  ].includes(requestedSort)
+    ? requestedSort
+    : "featured";
 
   // ------------------------------------------
   // Variant filter
@@ -874,14 +877,37 @@ const getProducts = asyncHandler(async (req, res) => {
       },
     },
 
+    // Calculate the average review rating for rating-based sorting.
+    {
+      $lookup: {
+        from: "reviews",
+        localField: "_id",
+        foreignField: "product",
+        as: "reviews",
+      },
+    },
+
+    {
+      $addFields: {
+        averageRating: { $ifNull: [{ $avg: "$reviews.rating" }, 0] },
+      },
+    },
+
     // --------------------------------------
     // Sorting
     // --------------------------------------
 
     {
-      $sort: {
-        [sortField]: order,
-      },
+      $sort:
+        sortOption === "price-asc"
+          ? { minPrice: 1, createdAt: -1, _id: 1 }
+          : sortOption === "price-desc"
+            ? { minPrice: -1, createdAt: -1, _id: 1 }
+            : sortOption === "rating"
+              ? { averageRating: -1, createdAt: -1, _id: 1 }
+              : sortOption === "newest"
+                ? { createdAt: -1, _id: 1 }
+                : { isFeatured: -1, createdAt: -1, _id: 1 },
     },
 
     // --------------------------------------
@@ -973,7 +999,38 @@ const getProducts = asyncHandler(async (req, res) => {
     ]),
   ]);
 
+  const priceRangeResult = await Product.aggregate([
+    {
+      $match: {
+        isPublished: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "variants",
+        localField: "_id",
+        foreignField: "product",
+        as: "variants",
+      },
+    },
+    { $unwind: "$variants" },
+    {
+      $match: {
+        "variants.isAvailable": true,
+        "variants.stock": { $gt: 0 },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        min: { $min: "$variants.price" },
+        max: { $max: "$variants.price" },
+      },
+    },
+  ]);
+
   const total = totalProducts[0]?.total ?? 0;
+  const priceRange = priceRangeResult[0] ?? { min: 0, max: 0 };
 
   const totalPages = Math.ceil(total / limitNumber);
 
@@ -986,6 +1043,10 @@ const getProducts = asyncHandler(async (req, res) => {
         limit: limitNumber,
         totalProducts: total,
         totalPages,
+        priceRange: {
+          min: priceRange.min,
+          max: priceRange.max,
+        },
       },
       "Products fetched successfully"
     )
