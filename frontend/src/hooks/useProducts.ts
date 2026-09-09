@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState } from "react";
 import axios from "axios";
-import { getProducts, type Product } from "../api/products";
+import { getProducts, type Gender, type Product, type SortOption } from "../api/products";
 
 export type ProductQueryParams = {
   page?: number;
@@ -10,8 +10,10 @@ export type ProductQueryParams = {
   bestSeller?: boolean;
   featured?: boolean;
   newArrival?: boolean;
-  sortBy?: "name" | "createdAt" | "updatedAt";
-  sortType?: "asc" | "desc";
+  sortBy?: SortOption;
+  gender?: Gender | Gender[];
+  minPrice?: number;
+  maxPrice?: number;
 };
 
 export default function useProducts(params?: ProductQueryParams) {
@@ -20,6 +22,7 @@ export default function useProducts(params?: ProductQueryParams) {
   const [loading, setLoading] = useState(false);
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
 
   const {
     page,
@@ -30,7 +33,9 @@ export default function useProducts(params?: ProductQueryParams) {
     featured,
     newArrival,
     sortBy,
-    sortType,
+    gender,
+    minPrice,
+    maxPrice,
   } = params ?? {};
 
   const refetch = useCallback(
@@ -51,7 +56,9 @@ export default function useProducts(params?: ProductQueryParams) {
             featured,
             newArrival,
             sortBy,
-            sortType,
+            gender: Array.isArray(gender) ? gender.join(",") : gender,
+            minPrice,
+            maxPrice,
           },
           signal,
         );
@@ -63,6 +70,10 @@ export default function useProducts(params?: ProductQueryParams) {
         setProducts(payload.products ?? []);
         setTotalProducts(payload.totalProducts ?? 0);
         setTotalPages(payload.totalPages ?? 0);
+        setPriceRange([
+          payload.priceRange?.min ?? 0,
+          payload.priceRange?.max ?? 10000,
+        ]);
       } catch (error) {
         if (axios.isAxiosError(error) && error.code === "ERR_CANCELED") {
           return;
@@ -88,7 +99,9 @@ export default function useProducts(params?: ProductQueryParams) {
       featured,
       newArrival,
       sortBy,
-      sortType,
+      gender,
+      minPrice,
+      maxPrice,
     ],
   );
 
@@ -106,6 +119,7 @@ export default function useProducts(params?: ProductQueryParams) {
     products,
     totalPages,
     totalProducts,
+    priceRange,
     error,
     loading,
     refetch,

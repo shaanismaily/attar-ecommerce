@@ -1,6 +1,15 @@
 import client from "./client";
 import type { AxiosRequestConfig } from "axios";
 
+export type SortOption =
+  | "featured"
+  | "price-asc"
+  | "price-desc"
+  | "rating"
+  | "newest";
+
+export type Gender = "men" | "women" | "unisex";
+
 export type Variant = {
   _id: string;
   volume: number;
@@ -43,7 +52,7 @@ export type Product = {
   isNewArrival: boolean;
   isPublished: boolean;
 
-  gender: "men" | "women" | "unisex";
+  gender: Gender;
 
   images: Image[];
   category: Category;
@@ -71,6 +80,10 @@ export type ProductListResponse = {
   limit: number;
   totalProducts: number;
   totalPages: number;
+  priceRange: {
+    min: number;
+    max: number;
+  };
 };
 
 export type ProductDetailResponse = {

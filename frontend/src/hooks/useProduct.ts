@@ -1,10 +1,10 @@
 import axios from "axios";
-import { getProduct, type Product, type RelatedProductResponse } from "../api/products";
+import { getProduct, type Product, type RelatedProduct } from "../api/products";
 import { useCallback, useEffect, useState } from "react";
 
 function useProduct(slug: string | undefined) {
   const [product, setProduct] = useState<Product | null>(null);
-  const [relatedProducts, setRelatedProducts] = useState<RelatedProductResponse[]>([]);
+  const [relatedProducts, setRelatedProducts] = useState<RelatedProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
