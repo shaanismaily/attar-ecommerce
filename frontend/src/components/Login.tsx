@@ -34,27 +34,48 @@ function Login() {
         : {
             phone: data.identifier,
             password: data.password,
-          };
+      };
 
       const response = await userLogin(payload);
+
+      // Authentication has succeeded at this point.  Cart migration is a separate, best-effort operation and must not make a valid login look like it failed (for example when the guest cart has stale stock).
+      dispatch(storeLogin(response.data.data.user));
+
+      let cartMergeError = "";
 
       const items = localStorage.getItem("cartItems");
 
       if (items) {
-        const cartItems = JSON.parse(items);
+        try {
+          const cartItems: unknown = JSON.parse(items);
 
-        if (Array.isArray(cartItems) && cartItems.length > 0) {
-          await mergeCart(cartItems);
+          if (Array.isArray(cartItems) && cartItems.length > 0) {
+            await mergeCart(cartItems);
+          }
+
           localStorage.removeItem("cartItems");
+        } catch (error) {
+          // Do not retain a cart that cannot be used after sign-in; otherwise every later login repeats the same failed migration.
+          localStorage.removeItem("cartItems");
+
+          const message = axios.isAxiosError(error)
+            ? error.response?.data?.message
+            : undefined;
+
+          cartMergeError = message === "Insufficient stock"
+            ? "Your account is signed in, but some guest-cart items were not transferred because their stock has changed. Please add any available items again."
+            : "Your account is signed in, but we could not transfer your guest cart. Please add the items again.";
         }
       }
 
-      dispatch(storeLogin(response.data.data.user));
       const from = location.state?.from;
       const destination = from
         ? `${from.pathname}${from.search}${from.hash}`
         : "/";
-      navigate(destination, { replace: true });
+      navigate(cartMergeError ? "/cart" : destination, {
+        replace: true,
+        state: cartMergeError ? { cartMergeError } : undefined,
+      });
     } catch (error) {
       if (axios.isAxiosError(error)) {
         setError(error.response?.data?.message ?? "Login failed");

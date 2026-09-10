@@ -1,4 +1,4 @@
-import { useNavigate, Link } from "react-router-dom"
+import { useNavigate, Link, useLocation } from "react-router-dom"
 import useCart from "../hooks/useCart"
 import { useDispatch, useSelector } from "react-redux"
 import type { RootState } from "../store/store"
@@ -7,6 +7,9 @@ import { setCheckoutIntent } from "../store/checkoutSlice"
 function Cart() {
     const { cart, removeFromCart, updateItemQuantity, updatingItem, error, loading, refetch } = useCart()
     const navigate = useNavigate()
+    const location = useLocation()
+
+    const cartMergeError = location.state?.cartMergeError as string | undefined;
 
     const authStatus = useSelector((state: RootState) => state.auth.status);
     const dispatch = useDispatch()
@@ -55,6 +58,14 @@ function Cart() {
     return (
       <div className="min-h-screen bg-[#FAF8F3] pt-32 flex items-center justify-center px-6">
         <div className="text-center max-w-sm">
+          {cartMergeError && (
+            <p
+              className="mb-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+              role="status"
+            >
+              {cartMergeError}
+            </p>
+          )}
           <div className="w-20 h-20 border border-[#d0ccc0] flex items-center justify-center mx-auto mb-6">
             <svg width="36" height="36" fill="none" stroke="#C9A227" strokeWidth="1.2" viewBox="0 0 24 24">
               <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
@@ -90,6 +101,14 @@ function Cart() {
       </div>
 
       <div className="max-w-350 mx-auto px-6 lg:px-10 py-12">
+        {cartMergeError && (
+          <p
+            className="mb-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+            role="status"
+          >
+            {cartMergeError}
+          </p>
+        )}
         <div className="flex flex-col lg:flex-row gap-10 xl:gap-16">
 
           {/* Cart Items */}
