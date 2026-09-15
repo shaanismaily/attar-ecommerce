@@ -98,7 +98,7 @@ function Home() {
             >
               ✦ Royal Oudh &nbsp;·&nbsp; Pure Attars &nbsp;·&nbsp; Arabian
               Heritage &nbsp;·&nbsp; Handcrafted Excellence &nbsp;·&nbsp; 100%
-              Natural &nbsp;·&nbsp; Free Shipping over ₹999
+              Natural &nbsp;·&nbsp; Free Shipping over ₹599
             </span>
           ))}
         </div>
