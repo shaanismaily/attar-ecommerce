@@ -2,11 +2,14 @@ import { useState } from "react";
 import { register as userRegister, type RegisterData } from "../api/auth";
 import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { login } from "../store/authSlice";
 import Input from "./Input";
 
 function Signup() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const {
     register,
@@ -18,9 +21,10 @@ function Signup() {
     setError("");
     try {
       const response = await userRegister(data);
-      if (!response.data) {
+      if (!response.data.data?.user) {
         throw new Error(`Could not register: ${response.statusText}`);
       }
+      dispatch(login(response.data.data.user));
       navigate("/");
     } catch (error) {
       if (error instanceof Error) {

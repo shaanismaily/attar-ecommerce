@@ -10,12 +10,15 @@ type ProtectedProps = {
 
 export function Protected ({ children, authentication = true }: ProtectedProps) {
     const authStatus = useSelector((state: RootState) => state.auth.status)
+    const authInitialized = useSelector((state: RootState) => state.auth.initialized)
     const navigate = useNavigate()
     const location = useLocation()
 
     const [loading, setLoading] = useState(true) 
 
     useEffect(() => {
+      if (!authInitialized) return;
+
       if (authentication && !authStatus) {
         navigate("/login", { state: { from: location }, replace: true })
       } 
@@ -25,7 +28,7 @@ export function Protected ({ children, authentication = true }: ProtectedProps) 
       else {
         setLoading(false)
       }
-    }, [authStatus, navigate, authentication, location])
+    }, [authStatus, authInitialized, navigate, authentication, location])
     
-    return loading ? <p>Loading...</p> : <>{children}</>
+    return !authInitialized || loading ? <p>Loading...</p> : <>{children}</>
 }
