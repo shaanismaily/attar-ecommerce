@@ -37,6 +37,10 @@ const normalizeCart = (data: {
 type GuestCartItem = {
   variantId: string;
   quantity: number;
+  // These snapshots let the cart survive a temporary API restart during local development.
+  product?: Cart["items"][number]["product"];
+  variant?: Cart["items"][number]["variant"];
+  priceAtAddition?: number;
 };
 
 const readGuestCartItems = (): GuestCartItem[] => {
@@ -77,21 +81,49 @@ function useCart() {
       return null;
     }
 
-    const response = await previewCart(items);
+    try {
+      const response = await previewCart(items);
+      const { items: previewItems, totalAmount } = response.data.data;
 
-    const { items: previewItems, totalAmount } = response.data.data;
+      const itemsWithId = previewItems.map(item => ({
+          ...item,
+          _id: item.variant._id,
+      }));
 
-    const itemsWithId = previewItems.map(item => ({
-        ...item,
-        _id: item.variant._id,
-    }));
+      return {
+        _id: "guest",
+        user: "guest",
+        items: itemsWithId,
+        totalAmount,
+      };
+    } catch (error) {
+      // Keep a guest cart usable while the API is restarting. It will be refreshed with current stock and prices on the next successful request.
+      const cachedItems = items.flatMap((item) =>
+        item.product && item.variant && item.priceAtAddition !== undefined
+          ? [{
+              _id: item.variant._id,
+              product: item.product,
+              variant: item.variant,
+              quantity: item.quantity,
+              priceAtAddition: item.priceAtAddition,
+            }]
+          : [],
+      );
 
-    return {
-      _id: "guest",
-      user: "guest",
-      items: itemsWithId,
-      totalAmount,
-    };
+      if (cachedItems.length === items.length) {
+        return {
+          _id: "guest",
+          user: "guest",
+          items: cachedItems,
+          totalAmount: cachedItems.reduce(
+            (total, item) => total + item.priceAtAddition * item.quantity,
+            0,
+          ),
+        };
+      }
+
+      throw error;
+    }
   };
   const getDatabaseCart = async (signal?: AbortSignal): Promise<Cart> => {
     const response = await getUserCart(signal);
@@ -193,6 +225,9 @@ function useCart() {
         existingCart.push({
           variantId: variant._id,
           quantity,
+          product,
+          variant,
+          priceAtAddition: variant.price,
         });
       }
 
