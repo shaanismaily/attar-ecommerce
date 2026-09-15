@@ -78,7 +78,11 @@ const addItemToCart = asyncHandler( async(req, res) => {
         await cart.populate([
             {
                 path: "items.product",
-                select: "name slug images"
+                select: "name slug images category",
+                populate: {
+                    path: "category",
+                    select: "name"
+                }
             },
             {
                 path: "items.variant",
@@ -114,7 +118,11 @@ const addItemToCart = asyncHandler( async(req, res) => {
     }
 
     await userCart.save();
-    await userCart.populate("items.product", "name slug images");
+    await userCart.populate({
+        path: "items.product",
+        select: "name slug images category",
+        populate: { path: "category", select: "name" }
+    });
     await userCart.populate("items.variant", "volume price stock");
 
     const totalAmount = calculateCartTotal(userCart)
@@ -128,7 +136,11 @@ const getCart = asyncHandler( async(req, res) => {
     const userId = req.user!._id
 
     const cart = await Cart.findOne({ user: userId })
-        .populate("items.product", "name slug images")
+        .populate({
+            path: "items.product",
+            select: "name slug images category",
+            populate: { path: "category", select: "name" }
+        })
         .populate("items.variant", "volume price stock")
         .lean();
 
@@ -166,7 +178,11 @@ const removeCartItem = asyncHandler(async (req, res) => {
 
     const totalAmount = calculateCartTotal(cart)
 
-    await cart.populate("items.product", "name slug images");
+    await cart.populate({
+        path: "items.product",
+        select: "name slug images category",
+        populate: { path: "category", select: "name" }
+    });
     await cart.populate("items.variant", "volume price stock");
 
     return res.status(200).json(
@@ -216,7 +232,11 @@ const updateCartItem = asyncHandler(async (req, res) => {
 
     const totalAmount = calculateCartTotal(cart);
 
-    await cart.populate("items.product", "name slug images");
+    await cart.populate({
+        path: "items.product",
+        select: "name slug images category",
+        populate: { path: "category", select: "name" }
+    });
     await cart.populate("items.variant", "volume price stock");
 
     return res.status(200).json(
@@ -412,7 +432,11 @@ const mergeCart = asyncHandler(async (req, res) => {
     await cart.populate([
         {
             path: "items.product",
-            select: "name slug images"
+            select: "name slug images category",
+            populate: {
+                path: "category",
+                select: "name"
+            }
         },
         {
             path: "items.variant",
@@ -473,7 +497,8 @@ const previewCart = asyncHandler(async (req, res) => {
     })
         .populate({
             path: "product",
-            select: "_id name slug images"
+            select: "_id name slug images category",
+            populate: { path: "category", select: "name" }
         })
         .lean();
 
@@ -503,6 +528,10 @@ const previewCart = asyncHandler(async (req, res) => {
             name: string;
             slug: string;
             images: { url: string; publicId: string }[];
+            category: {
+                _id: mongoose.Types.ObjectId;
+                name: string;
+            };
         } | null;
 
         if (!variant.isAvailable) {
