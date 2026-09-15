@@ -137,7 +137,7 @@ function Cart() {
                     <div className="flex items-start justify-between gap-4 mb-2">
                       <div>
                         <p className="text-[0.6rem] tracking-[0.2em] uppercase text-[#C9A227] mb-0.5" style={{ fontFamily: "var(--font-sans)" }}>
-                          {item.product.name}
+                          {item.product.category.name}
                         </p>
                         <Link
                           to={`/product/${item.product.slug}`}

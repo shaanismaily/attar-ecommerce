@@ -17,7 +17,6 @@ function ProductGrid({ products }: ProductGridProps) {
             (variant) => variant.isAvailable && variant.stock > 0
           ) ?? null;
 
-        //   const wishlisted = isWishlisted(product.id);
         return (
           <div
             key={product._id}
@@ -42,17 +41,7 @@ function ProductGrid({ products }: ProductGridProps) {
                 </span>
               )}
             </div>
-            {/* 
-            <button
-              // onClick={() => toggleWishlist(product.id)}
-              className="absolute top-3 right-3 z-10 w-8 h-8 bg-white/90 flex items-center justify-center shadow-sm hover:bg-white transition-all"
-              aria-label="Wishlist"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill={wishlisted ? "#C9A227" : "none"} stroke={wishlisted ? "#C9A227" : "#888"} strokeWidth="1.8">
-                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                        </svg> 
-            </button>
-            */}
+
             <Link
               to={`/product/${product.slug}`}
               className="block overflow-hidden bg-[#f5f2ec] aspect-3/4"
@@ -81,7 +70,7 @@ function ProductGrid({ products }: ProductGridProps) {
                 className="text-xs text-[#999] mb-3 font-light italic"
                 style={{ fontFamily: "var(--font-accent)" }}
               >
-                {/* {product.subtitle} */}
+                {product.tagline}
               </p>
               <div className="flex items-center gap-3 mb-4">
                 <span

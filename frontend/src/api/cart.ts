@@ -4,6 +4,10 @@ type Product = {
     _id: string;
     name: string;
     slug: string;
+    category: {
+        _id: string;
+        name: string;
+    };
     images: {
         url: string;
         publicId: string;
