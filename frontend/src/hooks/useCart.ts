@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import {
   addItemToCart as addItemToCartApi,
   getUserCart,
@@ -68,11 +68,14 @@ const readGuestCartItems = (): GuestCartItem[] => {
 function useCart() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [updatingItem, setUpdatingItem] = useState<string | null>(null);
 
   const cart = useSelector((state: RootState) => state.cart);
   const authStatus = useSelector((state: RootState) => state.auth.status);
   const dispatch = useDispatch();
+
+  const quantityTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>(
+    {},
+  );
 
   const getGuestCart = async (): Promise<Cart | null> => {
     const items = readGuestCartItems();
@@ -85,9 +88,9 @@ function useCart() {
       const response = await previewCart(items);
       const { items: previewItems, totalAmount } = response.data.data;
 
-      const itemsWithId = previewItems.map(item => ({
-          ...item,
-          _id: item.variant._id,
+      const itemsWithId = previewItems.map((item) => ({
+        ...item,
+        _id: item.variant._id,
       }));
 
       return {
@@ -100,13 +103,15 @@ function useCart() {
       // Keep a guest cart usable while the API is restarting. It will be refreshed with current stock and prices on the next successful request.
       const cachedItems = items.flatMap((item) =>
         item.product && item.variant && item.priceAtAddition !== undefined
-          ? [{
-              _id: item.variant._id,
-              product: item.product,
-              variant: item.variant,
-              quantity: item.quantity,
-              priceAtAddition: item.priceAtAddition,
-            }]
+          ? [
+              {
+                _id: item.variant._id,
+                product: item.product,
+                variant: item.variant,
+                quantity: item.quantity,
+                priceAtAddition: item.priceAtAddition,
+              },
+            ]
           : [],
       );
 
@@ -212,6 +217,9 @@ function useCart() {
       return;
     }
 
+    // -------------------------
+    // Guest cart
+    // -------------------------
     if (!authStatus) {
       const existingCart = readGuestCartItems();
 
@@ -245,46 +253,60 @@ function useCart() {
       return;
     }
 
+    // -------------------------
+    // Authenticated cart
+    // -------------------------
+
+    const existingItem = cart.items.find(
+      (item) => item.variant._id === variant._id,
+    );
+
+    const previousQuantity = existingItem?.quantity;
+
+    dispatch(
+      addToCart({
+        product,
+        variant,
+        priceAtAddition: variant.price,
+        quantity,
+      }),
+    );
+
     try {
-      setLoading(true);
-
-      const response = await addItemToCartApi(quantity, variant._id);
-
-      const cart = normalizeCart(response.data.data);
-
-      dispatch(
-        setCart({
-          items: cart.items,
-          totalAmount: cart.totalAmount,
-        }),
-      );
+      await addItemToCartApi(quantity, variant._id);
     } catch (error) {
+      if (previousQuantity !== undefined) {
+        dispatch(
+          updateQuantity({
+            itemId: variant._id,
+            quantity: previousQuantity,
+          }),
+        );
+      } else {
+        dispatch(removeFromReduxCart(variant._id));
+      }
+
       if (axios.isAxiosError(error)) {
         setError(error.response?.data?.message || error.message);
       } else {
-        setError("Could not add items to cart");
+        setError("Could not add item to cart");
       }
-    } finally {
-      setLoading(false);
     }
   };
 
   const updateItemQuantity = async (id: string, quantity: number) => {
-    if (quantity < 1) {
-      return;
-    }
+    if (quantity < 1) return;
 
-    if (updatingItem) return;
+    setError("");
 
+    // -------------------------
+    // Guest cart
+    // -------------------------
     if (!authStatus) {
       try {
-        setUpdatingItem(id);
-        setError("");
-
         const existingCart = readGuestCartItems();
-        if (existingCart.length === 0) {
-          return;
-        }
+
+        if (existingCart.length === 0) return;
 
         const item = existingCart.find((item) => item.variantId === id);
 
@@ -310,82 +332,120 @@ function useCart() {
       return;
     }
 
-    try {
-      setUpdatingItem(id);
-      setLoading(true);
-      setError("");
+    // -------------------------
+    // Authenticated cart
+    // -------------------------
 
-      const response = await updateCartItem(id, quantity);
+    const existingItem = cart.items.find(
+      (item) => item._id === id || item.variant._id === id,
+    );
 
-      const cart = normalizeCart(response.data.data);
-
-      dispatch(
-        setCart({
-          items: cart.items,
-          totalAmount: cart.totalAmount,
-        }),
-      );
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        setError(error.response?.data?.message ?? error.message);
-      } else {
-        setError("Could not update cart item");
-      }
-    } finally {
-      setLoading(false);
-      setUpdatingItem(null);
+    if (!existingItem) {
+      setError("Cart item not found");
+      return;
     }
+
+    const previousQuantity = existingItem.quantity;
+
+    // 1. Update UI immediately
+    dispatch(
+      updateQuantity({
+        itemId: id,
+        quantity,
+      }),
+    );
+
+    // 2. Cancel previous timer for this item
+    if (quantityTimers.current[id]) {
+      clearTimeout(quantityTimers.current[id]);
+    }
+
+    // 3. Wait until user stops clicking
+    quantityTimers.current[id] = setTimeout(async () => {
+      try {
+        await updateCartItem(id, quantity);
+      } catch (error) {
+        dispatch(
+          updateQuantity({
+            itemId: id,
+            quantity: previousQuantity,
+          }),
+        );
+        if (axios.isAxiosError(error)) {
+          setError(error.response?.data?.message ?? error.message);
+        } else {
+          setError("Could not update cart item");
+        }
+
+        // Sync with server if update fails
+        void refetch();
+      }
+    }, 400);
   };
 
   const removeFromCart = async (id: string) => {
+    setError("");
+    // ------------------------- // Guest cart // -------------------------
     if (!authStatus) {
       const newItems = readGuestCartItems().filter(
         (item) => item.variantId !== id,
       );
-
       localStorage.setItem("cartItems", JSON.stringify(newItems));
-
       dispatch(removeFromReduxCart(id));
       return;
     }
-
+    // ------------------------- // Authenticated cart // ------------------------- //
+    const existingItem = cart.items.find(
+      (item) => item._id === id || item.variant._id === id,
+    );
+    if (!existingItem) {
+      setError("Cart item not found");
+      return;
+    }
+    // Optimistic update
+    dispatch(removeFromReduxCart(id));
     try {
-      setLoading(true);
-      setError("");
-
-      const response = await removeCartItem(id);
-      const cart = normalizeCart(response.data.data);
-
+      await removeCartItem(id);
+    } catch (error) {
       dispatch(
-        setCart({
-          items: cart.items,
-          totalAmount: cart.totalAmount,
+        addToCart({
+          product: existingItem.product as Product,
+          variant: existingItem.variant as Variant,
+          priceAtAddition: existingItem.priceAtAddition,
+          quantity: existingItem.quantity,
         }),
       );
-    } catch (error) {
       if (axios.isAxiosError(error)) {
         setError(error.response?.data?.message ?? error.message);
       } else {
-        setError("Could not update cart item");
+        setError("Could not remove cart item");
       }
-    } finally {
-      setLoading(false);
-      setUpdatingItem(null);
     }
   };
 
   const clearCart = async () => {
+    setError("");
+    // Save current cart before clearing it
+    const previousItems = [...cart.items];
+    // Optimistic update
+    dispatch(clearReduxCart());
     try {
-      setError("");
-
       if (authStatus) {
         await clearDBCart();
       } else {
         localStorage.removeItem("cartItems");
       }
-
-      dispatch(clearReduxCart());
     } catch (error) {
+      // Rollback the entire cart
+      dispatch(
+        setCart({
+          items: previousItems,
+          totalAmount: previousItems.reduce(
+            (total, item) => total + item.priceAtAddition * item.quantity,
+            0,
+          ),
+        }),
+      );
       if (axios.isAxiosError(error)) {
         setError(error.response?.data?.message ?? error.message);
       } else {
@@ -402,7 +462,6 @@ function useCart() {
     addItemToCart,
     updateItemQuantity,
     removeFromCart,
-    updatingItem,
     clearCart,
   };
 }
