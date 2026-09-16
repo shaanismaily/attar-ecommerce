@@ -5,7 +5,7 @@ import type { RootState } from "../store/store"
 import { setCheckoutIntent } from "../store/checkoutSlice"
 
 function Cart() {
-    const { cart, removeFromCart, updateItemQuantity, updatingItem, error, loading, refetch } = useCart()
+    const { cart, removeFromCart, updateItemQuantity, error, loading, refetch } = useCart()
     const navigate = useNavigate()
     const location = useLocation()
 
@@ -151,7 +151,6 @@ function Cart() {
                         onClick={() => authStatus ? removeFromCart(item._id) : removeFromCart(item.variant._id)}
                         className="text-[#ccc] hover:text-red-400 transition-colors p-1"
                         aria-label="Remove"
-                        disabled={Boolean(updatingItem)}
                       >
                         <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
                           <path d="M18 6 6 18M6 6l12 12" />
@@ -171,7 +170,6 @@ function Cart() {
                         <button
                           onClick={() => authStatus ? updateItemQuantity(item._id, item.quantity - 1) : updateItemQuantity(item.variant._id, item.quantity - 1)}
                           className="w-9 h-9 flex items-center justify-center hover:bg-[#f5f2ec] transition-colors"
-                          disabled={Boolean(updatingItem)}
                         >
                           <svg width="12" height="12" fill="none" stroke="#666" strokeWidth="2" viewBox="0 0 24 24">
                             <line x1="5" y1="12" x2="19" y2="12" />
@@ -183,7 +181,6 @@ function Cart() {
                         <button
                           onClick={() => authStatus ? updateItemQuantity(item._id, item.quantity + 1) : updateItemQuantity(item.variant._id, item.quantity + 1)}
                           className="w-9 h-9 flex items-center justify-center hover:bg-[#f5f2ec] transition-colors"
-                          disabled={Boolean(updatingItem)}
                         >
                           <svg width="12" height="12" fill="none" stroke="#666" strokeWidth="2" viewBox="0 0 24 24">
                             <line x1="12" y1="5" x2="12" y2="19" />

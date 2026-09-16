@@ -1,25 +1,8 @@
 import client from "./client";
+import type { Product as CatalogProduct, Variant as CatalogVariant } from "./products";
 
-type Product = {
-    _id: string;
-    name: string;
-    slug: string;
-    category: {
-        _id: string;
-        name: string;
-    };
-    images: {
-        url: string;
-        publicId: string;
-    }[]
-}
-
-type Variant = {
-    _id: string;
-    volume: number;
-    price: number;
-    stock: number;
-}
+type Product = CatalogProduct;
+type Variant = CatalogVariant;
 
 export type Cart = {
     _id: string;
