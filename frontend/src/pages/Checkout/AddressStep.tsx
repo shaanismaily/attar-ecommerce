@@ -6,20 +6,7 @@ import {
   type Address,
 } from "../../api/addresses";
 import { useState, useEffect } from "react";
-import AddressForm from "../../components/AddressForm";
-
-type AddressFormData = {
-  firstName: string;
-  lastName: string;
-  phone: string;
-  street: string;
-  landmark?: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  addressType: "home" | "work" | "other";
-  isDefault: boolean;
-};
+import AddressForm, { type AddressFormData } from "../../components/AddressForm";
 
 type AddressProps = {
   selectedAddressId: string | null;

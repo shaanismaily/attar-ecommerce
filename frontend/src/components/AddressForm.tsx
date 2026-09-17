@@ -3,9 +3,9 @@ import Input from "./Input";
 import { Toast } from "./Toast";
 import { useState } from "react";
 
-type AddressFormData = {
+export type AddressFormData = {
   firstName: string;
-  lastName: string;
+  lastName?: string;
   phone: string;
   street: string;
   landmark?: string;
@@ -79,9 +79,7 @@ function AddressForm({ onSubmit, onCancel, initialData, isEditing = false }: Add
             <Input
               label="LAST NAME"
               className="input-luxury"
-              {...register("lastName", {
-                required: "Last name is required",
-              })}
+              {...register("lastName")}
             />
             {errors.lastName && (
               <p className="text-red-500 text-sm mt-1">
