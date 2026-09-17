@@ -7,7 +7,7 @@ import {
     Shop,
     ProductDetailPage,
 } from "./pages";
-import Cart from "./pages/Cart";
+import Cart from "./pages/Cart/Cart";
 import Checkout from "./pages/Checkout/Checkout";
 import { Protected } from "./components/AuthLayout";
 import UserDashboard from "./pages/UserDashboard/UserDashboard";
