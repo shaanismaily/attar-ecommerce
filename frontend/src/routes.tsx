@@ -13,6 +13,7 @@ import { Protected } from "./components/AuthLayout";
 import UserDashboard from "./pages/UserDashboard/UserDashboard";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
+import Products from "./pages/Admin/Products";
 
 export const router = createBrowserRouter([
     {
@@ -49,6 +50,14 @@ export const router = createBrowserRouter([
                     </Protected>
                 )
             },
+            {
+                path: "admin/products",
+                element: (
+                    <Protected>
+                        <Products />
+                    </Protected>
+                )
+            }
         ]
     },
     {
