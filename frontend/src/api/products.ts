@@ -29,12 +29,12 @@ type Category = {
   slug: string;
 };
 
-type FragranceNoteSection = {
+export type FragranceNoteSection = {
   description?: string;
   notes: string[];
 };
 
-type FragranceNotes = {
+export type FragranceNotes = {
   top: FragranceNoteSection;
   heart: FragranceNoteSection;
   base: FragranceNoteSection;
@@ -66,6 +66,29 @@ export type Product = {
 
   startingPrice?: number;
 };
+
+export type CreateProductData = {
+  name: string;
+  tagline?: string;
+  description: string;
+
+  isFeatured: boolean;
+  isBestSeller: boolean;
+  isNewArrival: boolean;
+  isPublished: boolean;
+
+  gender: "men" | "women" | "unisex";
+
+  images: File[];
+
+  categoryId: string;
+
+  fragranceNotes: FragranceNotes;
+
+  longevity: string;
+  sillage: string;
+  concentration: string;
+}
 
 export type RelatedProduct = Pick<
   Product,
@@ -112,3 +135,24 @@ export const getProduct = (slug: string) =>
 
 export const getFeaturedProduct = (config?: AxiosRequestConfig) =>
   client.get<ApiResponse<Product>>("/products/featured", config);
+
+export const createProduct = (data: CreateProductData) => {
+  const formData = new FormData();
+
+  formData.append("name", data.name);
+  if (data.tagline) formData.append("tagline", data.tagline);
+  formData.append("description", data.description);
+  formData.append("categoryId", data.categoryId);
+  formData.append("gender", data.gender);
+  formData.append("fragranceNotes", JSON.stringify(data.fragranceNotes));
+  formData.append("longevity", data.longevity);
+  formData.append("sillage", data.sillage);
+  formData.append("concentration", data.concentration);
+  formData.append("isFeatured", String(data.isFeatured));
+  formData.append("isBestSeller", String(data.isBestSeller));
+  formData.append("isNewArrival", String(data.isNewArrival));
+  formData.append("isPublished", String(data.isPublished));
+  data.images.forEach((image) => formData.append("images", image));
+
+  return client.post<ApiResponse<Product>>("/admin/products", formData);
+};

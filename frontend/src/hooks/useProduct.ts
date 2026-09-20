@@ -1,5 +1,11 @@
 import axios from "axios";
-import { getProduct, type Product, type RelatedProduct } from "../api/products";
+import {
+  createProduct,
+  getProduct,
+  type CreateProductData,
+  type Product,
+  type RelatedProduct,
+} from "../api/products";
 import { useCallback, useEffect, useState } from "react";
 
 function useProduct(slug: string | undefined) {
@@ -34,12 +40,27 @@ function useProduct(slug: string | undefined) {
     refetch();
   }, [refetch]);
 
+  const addProduct = async (data: CreateProductData) => {
+    try {
+      await createProduct(data);
+      return { success: true };
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        setError(error.response?.data?.message || error.message);
+      } else {
+        setError("Could not add new product");
+      }
+      throw error;
+    }
+  };
+
   return {
     product,
     relatedProducts,
     error,
     loading,
     refetch,
+    addProduct,
   };
 }
 
