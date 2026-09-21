@@ -31,6 +31,13 @@ type FragranceNotes = {
   base: FragranceNoteSection;
 };
 
+type ProductVariantInput = {
+  volume: 3 | 6 | 12;
+  price: number;
+  stock: number;
+  isAvailable: boolean;
+};
+
 const createProduct = asyncHandler(async (req, res) => {
   const {
     name,
@@ -39,6 +46,7 @@ const createProduct = asyncHandler(async (req, res) => {
     categoryId,
     gender,
     fragranceNotes,
+    variants,
     longevity,
     sillage,
     concentration,
@@ -63,6 +71,76 @@ const createProduct = asyncHandler(async (req, res) => {
   if (typeof categoryId !== "string" || !mongoose.isValidObjectId(categoryId)) {
     throw new ApiError(400, "Invalid category");
   }
+
+  let parsedVariants: unknown;
+
+  try {
+    parsedVariants =
+      typeof variants === "string" ? JSON.parse(variants) : variants;
+  } catch {
+    throw new ApiError(400, "Invalid variants format");
+  }
+
+  if (!Array.isArray(parsedVariants) || parsedVariants.length === 0) {
+    throw new ApiError(400, "At least one variant is required");
+  }
+
+  // ------------------------------------------
+  // Variants validation
+  // ------------------------------------------
+
+  const allowedVolumes = [3, 6, 12] as const;
+  const seenVolumes = new Set<number>();
+  const validatedVariants: ProductVariantInput[] = parsedVariants.map(
+    (variant) => {
+      if (!variant || typeof variant !== "object") {
+        throw new ApiError(400, "Invalid variant");
+      }
+
+      const value = variant as Record<string, unknown>;
+      const { volume, price, stock, isAvailable } = value;
+
+      if (volume === undefined || price === undefined || stock === undefined) {
+        throw new ApiError(400, "Each variant must have volume, price and stock");
+      }
+
+      if (
+        typeof volume !== "number" ||
+        !allowedVolumes.includes(volume as 3 | 6 | 12)
+      ) {
+        throw new ApiError(400, "Variant volume must be 3, 6, or 12 ml");
+      }
+
+      if (typeof price !== "number" || !Number.isFinite(price) || price < 0) {
+        throw new ApiError(400, "Variant price must be a non-negative number");
+      }
+
+      if (
+        typeof stock !== "number" ||
+        !Number.isInteger(stock) ||
+        stock < 0
+      ) {
+        throw new ApiError(400, "Variant stock must be a non-negative integer");
+      }
+
+      if (isAvailable !== undefined && typeof isAvailable !== "boolean") {
+        throw new ApiError(400, "Variant availability must be a boolean");
+      }
+
+      if (seenVolumes.has(volume)) {
+        throw new ApiError(400, "Each variant must have a unique volume");
+      }
+
+      seenVolumes.add(volume);
+
+      return {
+        volume: volume as 3 | 6 | 12,
+        price,
+        stock,
+        isAvailable: isAvailable ?? true,
+      };
+    }
+  );
 
   // ------------------------------------------
   // Gender validation
@@ -183,28 +261,6 @@ const createProduct = asyncHandler(async (req, res) => {
   });
 
   // ------------------------------------------
-  // Check duplicate product
-  // ------------------------------------------
-
-  const existedProduct = await Product.findOne({
-    slug: generatedSlug,
-  });
-
-  if (existedProduct) {
-    throw new ApiError(409, "Product already exists");
-  }
-
-  // ------------------------------------------
-  // Check category
-  // ------------------------------------------
-
-  const category = await Category.findById(categoryId);
-
-  if (!category) {
-    throw new ApiError(404, "Category not found");
-  }
-
-  // ------------------------------------------
   // Images
   // ------------------------------------------
 
@@ -247,38 +303,65 @@ const createProduct = asyncHandler(async (req, res) => {
   const published = parseBoolean(isPublished);
 
   // ------------------------------------------
-  // Create product
+  // Create product and variants atomically
   // ------------------------------------------
 
-  const product = await Product.create({
-    name: name.trim(),
+  const session = await mongoose.startSession();
+  let productId: mongoose.Types.ObjectId | undefined;
+  let createdVariants: unknown[] = [];
 
-    ...(typeof tagline === "string" &&
-      tagline.trim() && {
-        tagline: tagline.trim(),
-      }),
+  try {
+    await session.withTransaction(async () => {
+      const [existedProduct, category] = await Promise.all([
+        Product.exists({ slug: generatedSlug }).session(session),
+        Category.findById(categoryId).session(session),
+      ]);
 
-    description: description.trim(),
+      if (existedProduct) {
+        throw new ApiError(409, "Product already exists");
+      }
 
-    category: categoryId,
+      if (!category) {
+        throw new ApiError(404, "Category not found");
+      }
 
-    gender: validatedGender,
+      const [product] = await Product.create(
+        [
+          {
+            name: name.trim(),
+            ...(typeof tagline === "string" &&
+              tagline.trim() && { tagline: tagline.trim() }),
+            description: description.trim(),
+            category: categoryId,
+            gender: validatedGender,
+            fragranceNotes: productFragranceNotes,
+            longevity: longevity.trim(),
+            sillage: sillage.trim(),
+            concentration: concentration.trim(),
+            images: imageUrls,
+            isFeatured: featured,
+            isBestSeller: bestSeller,
+            isNewArrival: newArrival,
+            isPublished: published,
+          },
+        ],
+        { session }
+      );
 
-    fragranceNotes: productFragranceNotes,
+      productId = product._id;
+      createdVariants = await Variant.insertMany(
+        validatedVariants.map((variant) => ({
+          ...variant,
+          product: product._id,
+        })),
+        { session }
+      );
+    });
+  } finally {
+    await session.endSession();
+  }
 
-    longevity: longevity.trim(),
-    sillage: sillage.trim(),
-    concentration: concentration.trim(),
-
-    images: imageUrls,
-
-    isFeatured: featured,
-    isBestSeller: bestSeller,
-    isNewArrival: newArrival,
-    isPublished: published,
-  });
-
-  if (!product) {
+  if (!productId) {
     throw new ApiError(500, "Something went wrong while creating a product");
   }
 
@@ -286,14 +369,21 @@ const createProduct = asyncHandler(async (req, res) => {
   // Populate category
   // ------------------------------------------
 
-  const createdProduct = await Product.findById(product._id).populate(
+  const createdProduct = await Product.findById(productId).populate(
     "category",
     "name slug"
   );
 
-  return res
-    .status(201)
-    .json(new ApiResponse(201, createdProduct, "Product created successfully"));
+  return res.status(201).json(
+    new ApiResponse(
+      201,
+      {
+        product: createdProduct,
+        variants: createdVariants,
+      },
+      "Product and variants created successfully"
+    )
+  );
 });
 
 const updateProduct = asyncHandler(async (req, res) => {
@@ -749,11 +839,7 @@ const getProducts = asyncHandler(async (req, res) => {
   // ------------------------------------------
 
   type SortOption =
-    | "featured"
-    | "price-asc"
-    | "price-desc"
-    | "rating"
-    | "newest";
+    "featured" | "price-asc" | "price-desc" | "rating" | "newest";
 
   const requestedSort =
     typeof sortBy === "string" ? (sortBy as SortOption) : "featured";
