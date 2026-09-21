@@ -3,17 +3,25 @@ import { Variant } from "../models/variant.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import mongoose from "mongoose";
 
 const createVariant = asyncHandler(async (req, res) => {
   const { productId, volume, price, isAvailable, stock } = req.body;
 
-  if (
-    !productId ||
-    volume === undefined ||
-    price === undefined ||
-    stock === undefined
-  ) {
-    throw new ApiError(400, "Product, volume, price and stock are required");
+  if (typeof productId !== "string" || !mongoose.isValidObjectId(productId)) {
+    throw new ApiError(400, "Invalid product ID");
+  }
+
+  if (volume <= 0) {
+    throw new ApiError(400, "Volume must be a positive number");
+  }
+
+  if (typeof price !== "number" || price < 0) {
+    throw new ApiError(400, "Price must be a valid number");
+  }
+
+  if (typeof stock !== "number" || stock < 0) {
+    throw new ApiError(400, "Stock must be a valid number");
   }
 
   const product = await Product.findById(productId);
