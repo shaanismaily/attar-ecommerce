@@ -18,6 +18,8 @@ export type Variant = {
   isAvailable: boolean;
 };
 
+export type CreateProductVariant = Omit<Variant, "_id">;
+
 type Image = {
   url: string;
   publicId: string;
@@ -88,7 +90,9 @@ export type CreateProductData = {
   longevity: string;
   sillage: string;
   concentration: string;
-}
+
+  variants: CreateProductVariant[];
+};
 
 export type RelatedProduct = Pick<
   Product,
@@ -151,6 +155,7 @@ export const createProduct = (data: CreateProductData) => {
   formData.append("isFeatured", String(data.isFeatured));
   formData.append("isBestSeller", String(data.isBestSeller));
   formData.append("isNewArrival", String(data.isNewArrival));
+  formData.append("variants", JSON.stringify(data.variants));
   formData.append("isPublished", String(data.isPublished));
   data.images.forEach((image) => formData.append("images", image));
 

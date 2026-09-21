@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import type { CreateProductData } from "../api/products";
 import Input from "./Input";
 
@@ -38,6 +38,7 @@ function ProductForm({ categories, onSubmit, onCancel }: ProductFormProps) {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<ProductFormValues>({
     defaultValues: {
@@ -45,11 +46,24 @@ function ProductForm({ categories, onSubmit, onCancel }: ProductFormProps) {
       isBestSeller: false,
       isNewArrival: false,
       isPublished: true,
+      variants: [
+        { volume: 3, price: 0, stock: 0, isAvailable: true },
+      ],
     },
+  });
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "variants",
   });
 
   const submitProduct = async (data: ProductFormValues) => {
     setSubmitError(null);
+    const volumes = data.variants.map((variant) => variant.volume);
+    if (new Set(volumes).size !== volumes.length) {
+      setSubmitError("Each variant must use a different volume.");
+      return;
+    }
+
     try {
       await onSubmit({
         name: data.name.trim(),
@@ -79,6 +93,7 @@ function ProductForm({ categories, onSubmit, onCancel }: ProductFormProps) {
         isBestSeller: data.isBestSeller,
         isNewArrival: data.isNewArrival,
         isPublished: data.isPublished,
+        variants: data.variants,
       });
       reset();
     } catch (error) {
@@ -312,6 +327,126 @@ function ProductForm({ categories, onSubmit, onCancel }: ProductFormProps) {
             type="checkbox"
             {...register("isPublished")}
           />
+        </div>
+
+        <div className="md:col-span-2">
+          <div className="mb-3 flex items-center justify-between gap-4">
+            <div>
+              <p
+                className="text-sm font-semibold text-[#222]"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                VARIANTS
+              </p>
+              <p className="mt-1 text-xs text-[#888]">
+                Add each bottle size with its price and stock.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                append({ volume: 6, price: 0, stock: 0, isAvailable: true })
+              }
+              disabled={fields.length === 3}
+              className="btn-outline px-4 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              + Add variant
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {fields.map((field, index) => (
+              <div
+                key={field.id}
+                className="grid grid-cols-1 gap-3 rounded border border-[#e8e4d8] p-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_auto_auto]"
+              >
+                <div>
+                  <label
+                    className="mb-2 block text-[0.68rem] tracking-[0.15em] uppercase text-[#888]"
+                    htmlFor={`variant-volume-${field.id}`}
+                  >
+                    VOLUME
+                  </label>
+                  <select
+                    id={`variant-volume-${field.id}`}
+                    className="input-luxury w-full"
+                    {...register(`variants.${index}.volume`, {
+                      valueAsNumber: true,
+                      validate: (value) =>
+                        [3, 6, 12].includes(value) ||
+                        "Select a supported volume",
+                    })}
+                  >
+                    <option value={3}>3 ml</option>
+                    <option value={6}>6 ml</option>
+                    <option value={12}>12 ml</option>
+                  </select>
+                  {errors.variants?.[index]?.volume && (
+                    <p className="mt-1 text-sm text-red-500">
+                      {errorMessage(errors.variants[index]?.volume?.message)}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Input
+                    label="PRICE"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="input-luxury"
+                    {...register(`variants.${index}.price`, {
+                      valueAsNumber: true,
+                      min: { value: 0, message: "Price cannot be negative" },
+                      validate: (value) =>
+                        Number.isFinite(value) || "Price is required",
+                    })}
+                  />
+                  {errors.variants?.[index]?.price && (
+                    <p className="mt-1 text-sm text-red-500">
+                      {errorMessage(errors.variants[index]?.price?.message)}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Input
+                    label="STOCK"
+                    type="number"
+                    min="0"
+                    step="1"
+                    className="input-luxury"
+                    {...register(`variants.${index}.stock`, {
+                      valueAsNumber: true,
+                      min: { value: 0, message: "Stock cannot be negative" },
+                      validate: (value) =>
+                        Number.isInteger(value) || "Stock must be a whole number",
+                    })}
+                  />
+                  {errors.variants?.[index]?.stock && (
+                    <p className="mt-1 text-sm text-red-500">
+                      {errorMessage(errors.variants[index]?.stock?.message)}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-end pb-1">
+                  <Input
+                    label="AVAILABLE"
+                    type="checkbox"
+                    {...register(`variants.${index}.isAvailable`)}
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={() => remove(index)}
+                    disabled={fields.length === 1}
+                    className="text-xs font-medium uppercase tracking-[0.12em] text-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
