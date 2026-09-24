@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useSelector } from "react-redux";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import type { RootState } from "../store/store";
 
 type ProtectedProps = {
@@ -31,4 +31,24 @@ export function Protected ({ children, authentication = true }: ProtectedProps) 
     }, [authStatus, authInitialized, navigate, authentication, location])
     
     return !authInitialized || loading ? <p>Loading...</p> : <>{children}</>
+}
+
+/** Restricts the back-office area to accounts created with the admin role. */
+export function AdminProtected({ children }: { children: ReactNode }) {
+    const { status, user, initialized } = useSelector((state: RootState) => state.auth);
+    const location = useLocation();
+
+    if (!initialized) {
+        return <p className="grid min-h-screen place-items-center text-sm text-[#888]">Loading secure area…</p>;
+    }
+
+    if (!status) {
+        return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+
+    if (user?.role !== "admin") {
+        return <Navigate to="/" replace />;
+    }
+
+    return <>{children}</>;
 }

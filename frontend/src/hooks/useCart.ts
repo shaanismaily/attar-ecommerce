@@ -184,7 +184,7 @@ function useCart() {
         }
       }
     },
-    [authStatus],
+    [authStatus, dispatch],
   );
 
   useEffect(() => {
@@ -325,7 +325,7 @@ function useCart() {
             quantity,
           }),
         );
-      } catch (error) {
+      } catch {
         setError("Could not update cart item");
       }
 
