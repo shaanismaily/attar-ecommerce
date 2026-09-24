@@ -9,11 +9,15 @@ import {
 } from "./pages";
 import Cart from "./pages/Cart/Cart";
 import Checkout from "./pages/Checkout/Checkout";
-import { Protected } from "./components/AuthLayout";
+import { AdminProtected, Protected } from "./components/AuthLayout";
 import UserDashboard from "./pages/UserDashboard/UserDashboard";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import Products from "./pages/Admin/Products";
+import Dashboard from "./pages/Admin/Dashboard";
+import Categories from "./pages/Admin/Categories";
+import Orders from "./pages/Admin/Orders";
+import AdminLayout from "./components/AdminLayout";
 
 export const router = createBrowserRouter([
     {
@@ -50,15 +54,21 @@ export const router = createBrowserRouter([
                     </Protected>
                 )
             },
-            {
-                path: "admin/products",
-                element: (
-                    <Protected>
-                        <Products />
-                    </Protected>
-                )
-            }
         ]
+    },
+    {
+        path: "/admin",
+        element: (
+            <AdminProtected>
+                <AdminLayout />
+            </AdminProtected>
+        ),
+        children: [
+            { index: true, Component: Dashboard },
+            { path: "products", Component: Products },
+            { path: "categories", Component: Categories },
+            { path: "orders", Component: Orders },
+        ],
     },
     {
         path: "/login",
