@@ -15,11 +15,19 @@ export type PaymentStatus =
     | "refunded";
 
 export type Order = {
+    _id: string;
+    createdAt?: string;
     orderedBy: string;
     totalAmount: number;
     orderStatus: OrderStatus;
     paymentStatus: PaymentStatus;
-    shippingAddress: Address;
+    shippingAddress?: Address;
+    shippingAddressSnapshot?: {
+        firstName: string;
+        lastName: string;
+        city: string;
+        state: string;
+    };
     orderItems: {
         product: {
             _id: string;
@@ -40,7 +48,7 @@ export type Order = {
         volume: number;
         price: number;
         quantity: number;
-    };
+    }[];
 }
 
 export type OrderItemData = {

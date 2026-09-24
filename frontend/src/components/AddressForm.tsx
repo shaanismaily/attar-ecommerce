@@ -23,14 +23,19 @@ interface AddressFormProps {
   isEditing?: boolean;
 }
 
-function AddressForm({ onSubmit, onCancel, initialData, isEditing = false }: AddressFormProps) {
+function AddressForm({
+  onSubmit,
+  onCancel,
+  initialData,
+  isEditing = false,
+}: AddressFormProps) {
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
   } = useForm<AddressFormData>({
-    defaultValues: initialData
+    defaultValues: initialData,
   });
   const [toast, setToast] = useState<{
     message: string;
@@ -42,7 +47,7 @@ function AddressForm({ onSubmit, onCancel, initialData, isEditing = false }: Add
       await onSubmit(data);
       reset();
       setToast({ message: "Address saved successfully!", type: "success" });
-    } catch (error) {
+    } catch {
       setToast({ message: "Failed to save address", type: "error" });
     }
   };
@@ -253,7 +258,11 @@ function AddressForm({ onSubmit, onCancel, initialData, isEditing = false }: Add
             disabled={isSubmitting}
             className="btn-primary flex-1 min-h-11 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? "Saving..." : isEditing ? "Update Address" : "Save Address"}
+            {isSubmitting
+              ? "Saving..."
+              : isEditing
+                ? "Update Address"
+                : "Save Address"}
           </button>
 
           {onCancel && (
