@@ -94,6 +94,10 @@ export type CreateProductData = {
   variants: CreateProductVariant[];
 };
 
+export type UpdateProductData = Partial<Omit<CreateProductData, "images" | "categoryId" | "variants">> & {
+  category?: string;
+};
+
 export type RelatedProduct = Pick<
   Product,
   "_id" | "name" | "slug" | "images" | "category"
@@ -161,3 +165,9 @@ export const createProduct = (data: CreateProductData) => {
 
   return client.post<ApiResponse<Product>>("/admin/products", formData);
 };
+
+export const updateProduct = (productId: string, data: UpdateProductData) =>
+  client.patch<ApiResponse<Product>>(`/admin/products/${productId}`, data);
+
+export const deleteProduct = (productId: string) =>
+  client.delete<ApiResponse<null>>(`/admin/products/${productId}`);

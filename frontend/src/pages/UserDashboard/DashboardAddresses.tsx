@@ -6,7 +6,7 @@ import { Toast } from "../../components/Toast";
 
 type AddressFormData = {
   firstName: string;
-  lastName: string;
+  lastName?: string;
   phone: string;
   street: string;
   landmark?: string;

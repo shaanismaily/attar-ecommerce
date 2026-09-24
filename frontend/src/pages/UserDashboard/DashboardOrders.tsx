@@ -26,16 +26,16 @@ function DashboardOrders() {
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-[#0F5132]" style={{ fontFamily: "var(--font-display)" }}>₹{(order.totalAmount || 0).toLocaleString()}</p>
-                  <p className="text-xs text-[#888]" style={{ fontFamily: "var(--font-sans)" }}>1 item</p>
+                  <p className="text-xs text-[#888]" style={{ fontFamily: "var(--font-sans)" }}>{order.orderItems.reduce((total, item) => total + item.quantity, 0)} item(s)</p>
                 </div>
               </div>
               <div className="px-6 py-4">
                 <div className="flex justify-between py-2">
                   <div>
-                    <p className="text-sm font-medium text-[#333]" style={{ fontFamily: "var(--font-sans)" }}>{order.orderItems.productName || "Product"}</p>
-                    <p className="text-xs text-[#888]" style={{ fontFamily: "var(--font-sans)" }}>Qty: {order.orderItems.quantity}</p>
+                    <p className="text-sm font-medium text-[#333]" style={{ fontFamily: "var(--font-sans)" }}>{order.orderItems[0]?.productName || "Product"}</p>
+                    <p className="text-xs text-[#888]" style={{ fontFamily: "var(--font-sans)" }}>Qty: {order.orderItems.reduce((total, item) => total + item.quantity, 0)}</p>
                   </div>
-                  <span className="text-sm font-semibold text-[#222]" style={{ fontFamily: "var(--font-sans)" }}>₹{(order.orderItems.price * order.orderItems.quantity).toLocaleString()}</span>
+                  <span className="text-sm font-semibold text-[#222]" style={{ fontFamily: "var(--font-sans)" }}>₹{order.orderItems.reduce((total, item) => total + item.price * item.quantity, 0).toLocaleString()}</span>
                 </div>
               </div>
               <div className="px-6 pb-4 flex gap-3">
