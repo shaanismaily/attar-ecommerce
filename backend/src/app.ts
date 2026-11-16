@@ -43,9 +43,9 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
       : err.statusCode || 500;
 
   const message = isValidationError
-    ? "Invalid address data"
+    ? "Validation failed"
     : isDuplicateKeyError
-      ? "Address already exists"
+      ? "A record with this value already exists"
       : err.message || "Internal server error";
 
   res.status(statusCode).json({
