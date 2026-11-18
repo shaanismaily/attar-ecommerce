@@ -1,5 +1,5 @@
 
-import mongoose, { Types } from "mongoose";
+import mongoose, { Types, type ClientSession } from "mongoose";
 import { Variant } from "../models/variant.model.js";
 import StockMovement from "../models/stockMovement.model.js";
 
@@ -25,13 +25,45 @@ interface MovementOptions {
     note?: string;
 }
 
+interface StockResult {
+    variantId: Types.ObjectId;
+    stockBefore: number;
+    stockAfter: number;
+}
+
 const validateQuantity = (quantity: number) => {
     if (!Number.isInteger(quantity) || quantity < 1) {
         throw new Error("Quantity must be a positive integer");
     }
 };
 
-const applyMovement = async (options: MovementOptions) => {
+const runInTransaction = async <T>(
+    existingSession: ClientSession | undefined,
+    operation: (session: ClientSession) => Promise<T>
+): Promise<T> => {
+    if (existingSession) {
+        return operation(existingSession);
+    }
+
+    const session = await mongoose.startSession();
+
+    try {
+        let result!: T;
+
+        await session.withTransaction(async () => {
+            result = await operation(session);
+        });
+
+        return result;
+    } finally {
+        await session.endSession();
+    }
+};
+
+const applyMovement = async (
+    options: MovementOptions,
+    existingSession?: ClientSession
+): Promise<StockResult> => {
     const {
         variantId,
         quantity,
@@ -57,103 +89,84 @@ const applyMovement = async (options: MovementOptions) => {
         throw new Error("Invalid user ID");
     }
 
-    const session = await mongoose.startSession();
+    return runInTransaction(existingSession, async (session) => {
+        const variant = await Variant.findById(variantId).session(session);
 
-    let result: {
-        variantId: Types.ObjectId;
-        stockBefore: number;
-        stockAfter: number;
-    } | null = null;
-
-    try {
-        await session.withTransaction(async () => {
-            const variant = await Variant.findById(variantId).session(session);
-
-            if (!variant) {
-                throw new Error("Variant not found");
-            }
-
-            if (
-                (movementType === "POS_SALE" ||
-                    movementType === "ONLINE_ORDER") &&
-                !variant.isAvailable
-            ) {
-                throw new Error("This variant is not available for sale");
-            }
-
-            const stockBefore = variant.stock;
-
-            const stockAfter =
-                direction === "IN"
-                    ? stockBefore + quantity
-                    : stockBefore - quantity;
-
-            if (stockAfter < 0) {
-                throw new Error("Insufficient stock");
-            }
-
-            // Conditional update protects against stale stock values.
-            const updateResult = await Variant.updateOne(
-                {
-                    _id: variant._id,
-                    stock: stockBefore,
-                },
-                {
-                    $inc: {
-                        stock: direction === "IN" ? quantity : -quantity,
-                    },
-                },
-                { session }
-            );
-
-            if (updateResult.modifiedCount !== 1) {
-                throw new Error("Stock changed concurrently. Please retry.");
-            }
-
-            await StockMovement.create(
-                [
-                    {
-                        product: variant.product,
-                        variant: variant._id,
-                        movementType,
-                        direction,
-                        quantity,
-                        stockBefore,
-                        stockAfter,
-                        referenceType,
-                        referenceId: referenceId
-                            ? new Types.ObjectId(referenceId)
-                            : undefined,
-                        performedBy: performedBy
-                            ? new Types.ObjectId(performedBy)
-                            : undefined,
-                        note,
-                    },
-                ],
-                { session }
-            );
-
-            result = {
-                variantId: variant._id,
-                stockBefore,
-                stockAfter,
-            };
-        });
-
-        if (!result) {
-            throw new Error("Stock movement could not be completed");
+        if (!variant) {
+            throw new Error("Variant not found");
         }
 
-        return result;
-    } finally {
-        await session.endSession();
-    }
+        const isSale =
+            movementType === "POS_SALE" ||
+            movementType === "ONLINE_ORDER";
+
+        if (isSale && !variant.isAvailable) {
+            throw new Error("This variant is not available for sale");
+        }
+
+        const stockBefore = variant.stock;
+
+        const stockAfter =
+            direction === "IN"
+                ? stockBefore + quantity
+                : stockBefore - quantity;
+
+        if (stockAfter < 0) {
+            throw new Error("Insufficient stock");
+        }
+
+        const updateResult = await Variant.updateOne(
+            {
+                _id: variant._id,
+                stock: stockBefore,
+                ...(isSale ? { isAvailable: true } : {}),
+            },
+            {
+                $inc: {
+                    stock: direction === "IN" ? quantity : -quantity,
+                },
+            },
+            { session }
+        );
+
+        if (updateResult.modifiedCount !== 1) {
+            throw new Error("Stock changed concurrently. Please retry.");
+        }
+
+        await StockMovement.create(
+            [
+                {
+                    product: variant.product,
+                    variant: variant._id,
+                    movementType,
+                    direction,
+                    quantity,
+                    stockBefore,
+                    stockAfter,
+                    referenceType,
+                    referenceId: referenceId
+                        ? new Types.ObjectId(referenceId)
+                        : undefined,
+                    performedBy: performedBy
+                        ? new Types.ObjectId(performedBy)
+                        : undefined,
+                    note,
+                },
+            ],
+            { session }
+        );
+
+        return {
+            variantId: variant._id,
+            stockBefore,
+            stockAfter,
+        };
+    });
 };
 
 const addStock = async (
-    options: Omit<MovementOptions, "direction"> & {
-        direction?: never;
-    }
+    options: Omit<MovementOptions, "direction">,
+    session?: ClientSession
 ) => {
     const allowedTypes: StockMovementType[] = [
         "PURCHASE",
@@ -166,16 +179,15 @@ const addStock = async (
         throw new Error("Invalid stock-in movement type");
     }
 
-    return applyMovement({
-        ...options,
-        direction: "IN",
-    });
+    return applyMovement(
+        { ...options, direction: "IN" },
+        session
+    );
 };
 
 const removeStock = async (
-    options: Omit<MovementOptions, "direction"> & {
-        direction?: never;
-    }
+    options: Omit<MovementOptions, "direction">,
+    session?: ClientSession
 ) => {
     const allowedTypes: StockMovementType[] = [
         "POS_SALE",
@@ -188,23 +200,26 @@ const removeStock = async (
         throw new Error("Invalid stock-out movement type");
     }
 
-    return applyMovement({
-        ...options,
-        direction: "OUT",
-    });
+    return applyMovement(
+        { ...options, direction: "OUT" },
+        session
+    );
 };
 
-const adjustStock = async ({
-    variantId,
-    newStock,
-    performedBy,
-    note,
-}: {
-    variantId: string;
-    newStock: number;
-    performedBy?: string;
-    note?: string;
-}) => {
+const adjustStock = async (
+    {
+        variantId,
+        newStock,
+        performedBy,
+        note,
+    }: {
+        variantId: string;
+        newStock: number;
+        performedBy?: string;
+        note?: string;
+    },
+    existingSession?: ClientSession
+): Promise<StockResult> => {
     if (!Number.isInteger(newStock) || newStock < 0) {
         throw new Error("New stock must be a non-negative integer");
     }
@@ -217,89 +232,68 @@ const adjustStock = async ({
         throw new Error("Invalid user ID");
     }
 
-    const session = await mongoose.startSession();
+    return runInTransaction(existingSession, async (session) => {
+        const variant = await Variant.findById(variantId).session(session);
 
-    let result: {
-        variantId: Types.ObjectId;
-        stockBefore: number;
-        stockAfter: number;
-    } | null = null;
-
-    try {
-        await session.withTransaction(async () => {
-            const variant = await Variant.findById(variantId).session(session);
-
-            if (!variant) {
-                throw new Error("Variant not found");
-            }
-
-            const stockBefore = variant.stock;
-            const difference = newStock - stockBefore;
-
-            if (difference === 0) {
-                result = {
-                    variantId: variant._id,
-                    stockBefore,
-                    stockAfter: stockBefore,
-                };
-                return;
-            }
-
-            const direction = difference > 0 ? "IN" : "OUT";
-            const quantity = Math.abs(difference);
-
-            const updateResult = await Variant.updateOne(
-                {
-                    _id: variant._id,
-                    stock: stockBefore,
-                },
-                {
-                    $set: {
-                        stock: newStock,
-                    },
-                },
-                { session }
-            );
-
-            if (updateResult.modifiedCount !== 1) {
-                throw new Error("Stock changed concurrently. Please retry.");
-            }
-
-            await StockMovement.create(
-                [
-                    {
-                        product: variant.product,
-                        variant: variant._id,
-                        movementType: "ADJUSTMENT",
-                        direction,
-                        quantity,
-                        stockBefore,
-                        stockAfter: newStock,
-                        referenceType: "MANUAL",
-                        performedBy: performedBy
-                            ? new Types.ObjectId(performedBy)
-                            : undefined,
-                        note,
-                    },
-                ],
-                { session }
-            );
-
-            result = {
-                variantId: variant._id,
-                stockBefore,
-                stockAfter: newStock,
-            };
-        });
-
-        if (!result) {
-            throw new Error("Stock adjustment could not be completed");
+        if (!variant) {
+            throw new Error("Variant not found");
         }
 
-        return result;
-    } finally {
-        await session.endSession();
-    }
+        const stockBefore = variant.stock;
+        const difference = newStock - stockBefore;
+
+        if (difference === 0) {
+            return {
+                variantId: variant._id,
+                stockBefore,
+                stockAfter: stockBefore,
+            };
+        }
+
+        const direction = difference > 0 ? "IN" : "OUT";
+        const quantity = Math.abs(difference);
+
+        const updateResult = await Variant.updateOne(
+            {
+                _id: variant._id,
+                stock: stockBefore,
+            },
+            {
+                $set: { stock: newStock },
+            },
+            { session }
+        );
+
+        if (updateResult.modifiedCount !== 1) {
+            throw new Error("Stock changed concurrently. Please retry.");
+        }
+
+        await StockMovement.create(
+            [
+                {
+                    product: variant.product,
+                    variant: variant._id,
+                    movementType: "ADJUSTMENT",
+                    direction,
+                    quantity,
+                    stockBefore,
+                    stockAfter: newStock,
+                    referenceType: "MANUAL",
+                    performedBy: performedBy
+                        ? new Types.ObjectId(performedBy)
+                        : undefined,
+                    note,
+                },
+            ],
+            { session }
+        );
+
+        return {
+            variantId: variant._id,
+            stockBefore,
+            stockAfter: newStock,
+        };
+    });
 };
 
 const inventoryService = {
