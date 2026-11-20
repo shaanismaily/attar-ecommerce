@@ -24,7 +24,8 @@ import healthcheckRouter from "./routes/healthcheck.route.js"
 import addressRouter from "./routes/address.routes.js"
 import purchaseRouter from "./routes/purchase.routes.js";
 import productionRouter from "./routes/production.routes.js";
-
+import rawMaterialRouter from "./routes/rawMaterial.routes.js"
+import supplierRouter from "./routes/supplier.routes.js"
 
 app.use("/api/v1", healthcheckRouter)
 app.use("/api/v1/users", userRouter)
@@ -36,6 +37,8 @@ app.use("/api/v1", variantRouter)
 app.use("/api/v1/address", addressRouter)
 app.use("/api/v1/purchases", purchaseRouter);
 app.use("/api/v1/production", productionRouter);
+app.use("/api/v1/raw-materials", rawMaterialRouter);
+app.use("/api/v1/suppliers", supplierRouter);
 
 const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   const isValidationError = err?.name === "ValidationError";
