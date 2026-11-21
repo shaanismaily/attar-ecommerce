@@ -5,6 +5,7 @@ import { ProductionBatch } from "../models/productionBatch.model.js";
 import { RawMaterialMovement } from "../models/rawMaterialMovement.model.js";
 import { Variant } from "../models/variant.model.js";
 import { default as StockMovement } from "../models/stockMovement.model.js";
+import { ApiError } from "../utils/ApiError.js";
 
 interface ProductionOutputInput {
     variantId: string;
@@ -96,6 +97,16 @@ export const createProductionBatch = async (
                     throw new Error("Variant not found");
                 }
 
+                if (
+                    variant.product.toString() !==
+                    rawMaterial.product.toString()
+                ) {
+                    throw new ApiError(
+                        400,
+                        `Variant ${variant._id} does not belong to raw material ${rawMaterial.name}`
+                    );
+                }
+
                 const totalOutputVolume =
                     variant.volume * output.bottleCount;
 
@@ -109,7 +120,7 @@ export const createProductionBatch = async (
                 });
             }
 
-            const consumedGrams = totalVolumeMl * density;
+            const consumedGrams = Number((totalVolumeMl * density).toFixed(3));
 
             const stockBefore = rawMaterial.stockGrams;
 
