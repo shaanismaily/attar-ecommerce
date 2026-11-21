@@ -1,6 +1,8 @@
 
 import type { Request, Response } from "express";
+import mongoose from "mongoose";
 import { RawMaterial } from "../models/rawMaterial.model.js";
+import { Product } from "../models/product.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -10,6 +12,7 @@ const createRawMaterial = asyncHandler(
         const {
             name,
             sku,
+            productId,
             densityGramsPerMl,
             minimumStockGrams,
             notes,
@@ -24,9 +27,34 @@ const createRawMaterial = asyncHandler(
             throw new ApiError(400, "Invalid raw material data");
         }
 
+        if (
+            typeof productId !== "string" ||
+            !mongoose.Types.ObjectId.isValid(productId)
+        ) {
+            throw new ApiError(400, "Invalid product ID");
+        }
+
+        const product = await Product.findById(productId);
+
+        if (!product) {
+            throw new ApiError(404, "Product not found");
+        }
+
+        const existingRawMaterial = await RawMaterial.findOne({
+            product: product._id,
+        });
+
+        if (existingRawMaterial) {
+            throw new ApiError(
+                409,
+                "A raw material already exists for this product"
+            );
+        }
+
         const rawMaterial = await RawMaterial.create({
             name,
             sku,
+            product: product._id,
             densityGramsPerMl,
             minimumStockGrams: minimumStockGrams ?? 0,
             notes,
@@ -45,6 +73,7 @@ const createRawMaterial = asyncHandler(
 const getAllRawMaterials = asyncHandler(
     async (_req: Request, res: Response) => {
         const rawMaterials = await RawMaterial.find()
+            .populate("product")
             .sort({ createdAt: -1 });
 
         return res.status(200).json(
@@ -65,7 +94,7 @@ const getRawMaterialById = asyncHandler(
             throw new ApiError(400, "Invalid raw material ID");
         }
 
-        const rawMaterial = await RawMaterial.findById(id);
+        const rawMaterial = await RawMaterial.findById(id).populate("product");
 
         if (!rawMaterial) {
             throw new ApiError(404, "Raw material not found");

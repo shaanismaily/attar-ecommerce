@@ -6,6 +6,7 @@ export interface IRawMaterial {
     sku?: string;
     densityGramsPerMl: number;
     stockGrams: number;
+    product: mongoose.Types.ObjectId;
     minimumStockGrams: number;
     isActive: boolean;
     notes?: string;
@@ -30,6 +31,12 @@ const rawMaterialSchema = new Schema<IRawMaterial>(
             type: Number,
             required: true,
             min: 0.000001,
+        },
+        product: {
+            type: Schema.Types.ObjectId,
+            ref: "Product",
+            required: true,
+            unique: true,
         },
         stockGrams: {
             type: Number,
