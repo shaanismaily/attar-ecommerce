@@ -6,7 +6,7 @@ export interface ISaleItem {
     variant: mongoose.Types.ObjectId;
     productName: string;
     volume: number;
-    price: number;
+    listedPrice: number;
     sellingPrice: number;
     quantity: number;
     subtotal: number;
@@ -16,14 +16,14 @@ export interface ISale {
     receiptNumber: string;
     items: ISaleItem[];
     subtotal: number;
-    discount: number;
     totalAmount: number;
+    paymentMethod: "CASH" | "UPI" | "CARD";
     amountReceived: number;
     changeReturned: number;
-    paymentMethod: "CASH" | "UPI" | "CARD" | "SPLIT";
-    customer?: mongoose.Types.ObjectId;
-    soldBy: mongoose.Types.ObjectId;
+    customerName?: string;
+    customerPhone?: string;
     notes?: string;
+    soldBy: mongoose.Types.ObjectId;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -50,7 +50,7 @@ const saleItemSchema = new Schema<ISaleItem>(
             required: true,
             enum: [3, 6, 12],
         },
-        price: {
+        listedPrice: {
             type: Number,
             required: true,
             min: 0,
@@ -58,7 +58,7 @@ const saleItemSchema = new Schema<ISaleItem>(
         sellingPrice: {
             type: Number,
             required: true,
-            min: 0,
+            min: 0.01,
         },
         quantity: {
             type: Number,
@@ -87,7 +87,8 @@ const saleSchema = new Schema<ISale>(
             type: [saleItemSchema],
             required: true,
             validate: {
-                validator: (items: ISaleItem[]) => items.length > 0,
+                validator: (items: ISaleItem[]) =>
+                    items.length > 0,
                 message: "A sale must contain at least one item",
             },
         },
@@ -96,15 +97,15 @@ const saleSchema = new Schema<ISale>(
             required: true,
             min: 0,
         },
-        discount: {
-            type: Number,
-            default: 0,
-            min: 0,
-        },
         totalAmount: {
             type: Number,
             required: true,
             min: 0,
+        },
+        paymentMethod: {
+            type: String,
+            enum: ["CASH", "UPI", "CARD"],
+            required: true,
         },
         amountReceived: {
             type: Number,
@@ -116,31 +117,29 @@ const saleSchema = new Schema<ISale>(
             default: 0,
             min: 0,
         },
-        paymentMethod: {
+        customerName: {
             type: String,
-            enum: ["CASH", "UPI", "CARD", "SPLIT"],
-            required: true,
+            trim: true,
         },
-        customer: {
-            type: Schema.Types.ObjectId,
-            ref: "User",
+        customerPhone: {
+            type: String,
+            trim: true,
+        },
+        notes: {
+            type: String,
+            trim: true,
         },
         soldBy: {
             type: Schema.Types.ObjectId,
             ref: "User",
             required: true,
         },
-        notes: {
-            type: String,
-            trim: true,
-        },
     },
     { timestamps: true }
 );
 
 saleSchema.index({ createdAt: -1 });
-saleSchema.index({ customer: 1, createdAt: -1 });
-saleSchema.index({ soldBy: 1, createdAt: -1 });
+saleSchema.index({ customerPhone: 1, createdAt: -1 });
 
 export const Sale =
     mongoose.models.Sale ||
