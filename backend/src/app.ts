@@ -1,6 +1,7 @@
 import express, { type ErrorRequestHandler } from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import connectDB from "./db/index.js";
 
 const app = express();
 
@@ -13,6 +14,14 @@ app.use(express.json({limit: "16kb"}))
 app.use(express.urlencoded({ extended: true, limit: "16kb" }))
 app.use(express.static("public"))
 app.use(cookieParser())
+app.use(async (_req, _res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 import userRouter from "./routes/user.routes.js"
 import productRouter from "./routes/product.routes.js"
@@ -66,4 +75,4 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
 
 app.use(errorHandler);
 
-export { app };
+export default app;
