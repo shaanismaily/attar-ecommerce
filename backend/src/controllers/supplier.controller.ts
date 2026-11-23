@@ -63,7 +63,7 @@ const getSupplierById = asyncHandler(
     async (req: Request, res: Response) => {
         const { id } = req.params;
 
-        if (!id || !/^[a-f\d]{24}$/i.test(id)) {
+        if (typeof id !== "string" || !/^[a-f\d]{24}$/i.test(id)) {
             throw new ApiError(400, "Invalid supplier ID");
         }
 
@@ -87,7 +87,7 @@ const updateSupplier = asyncHandler(
     async (req: Request, res: Response) => {
         const { id } = req.params;
 
-        if (!id || !/^[a-f\d]{24}$/i.test(id)) {
+        if (typeof id !== "string" || !/^[a-f\d]{24}$/i.test(id)) {
             throw new ApiError(400, "Invalid supplier ID");
         }
 
@@ -137,7 +137,7 @@ const deactivateSupplier = asyncHandler(
     async (req: Request, res: Response) => {
         const { id } = req.params;
 
-        if (!id || !/^[a-f\d]{24}$/i.test(id)) {
+        if (typeof id !== "string" || !/^[a-f\d]{24}$/i.test(id)) {
             throw new ApiError(400, "Invalid supplier ID");
         }
 
