@@ -8,6 +8,7 @@ export interface IRawMaterial {
     stockGrams: number;
     product: mongoose.Types.ObjectId;
     minimumStockGrams: number;
+    averageCostPerGram: number;
     isActive: boolean;
     notes?: string;
     createdAt: Date;
@@ -44,6 +45,11 @@ const rawMaterialSchema = new Schema<IRawMaterial>(
             min: 0,
         },
         minimumStockGrams: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
+        averageCostPerGram: {
             type: Number,
             default: 0,
             min: 0,

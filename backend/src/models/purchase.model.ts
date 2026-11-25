@@ -7,6 +7,8 @@ export interface IPurchaseItem {
     quantityGrams: number;
     costPerGram: number;
     subtotal: number;
+    allocatedAdditionalCosts: number;
+    landedCostPerGram: number;
 }
 
 export interface IPurchase {
@@ -46,6 +48,16 @@ const purchaseItemSchema = new Schema<IPurchaseItem>(
             min: 0,
         },
         subtotal: {
+            type: Number,
+            required: true,
+            min: 0,
+        },
+        allocatedAdditionalCosts: {
+            type: Number,
+            required: true,
+            min: 0,
+        },
+        landedCostPerGram: {
             type: Number,
             required: true,
             min: 0,

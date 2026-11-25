@@ -1,7 +1,10 @@
 
-import mongoose, { Types } from "mongoose";
+import mongoose, { type HydratedDocument, Types } from "mongoose";
 import { Supplier } from "../models/supplier.model.js";
-import { RawMaterial } from "../models/rawMaterial.model.js";
+import {
+    RawMaterial,
+    type IRawMaterial,
+} from "../models/rawMaterial.model.js";
 import { Purchase } from "../models/purchase.model.js";
 import { RawMaterialMovement } from "../models/rawMaterialMovement.model.js";
 
@@ -20,6 +23,22 @@ interface CreatePurchaseInput {
     notes?: string;
     purchasedBy?: string;
 }
+
+interface PreparedPurchaseItem {
+    rawMaterial: HydratedDocument<IRawMaterial>;
+    quantityGrams: number;
+    costPerGram: number;
+    subtotal: number;
+}
+
+const roundMoney = (value: number) =>
+    Math.round((value + Number.EPSILON) * 100) / 100;
+
+const roundCost = (value: number) =>
+    Number(value.toFixed(6));
+
+const roundStock = (value: number) =>
+    Number(value.toFixed(3));
 
 export const createPurchase = async (input: CreatePurchaseInput) => {
     const {
@@ -48,6 +67,12 @@ export const createPurchase = async (input: CreatePurchaseInput) => {
         throw new Error("Paid amount cannot be negative");
     }
 
+    if (purchasedBy && !Types.ObjectId.isValid(purchasedBy)) {
+        throw new Error("Invalid user ID");
+    }
+
+    const seenMaterials = new Set<string>();
+
     for (const item of items) {
         if (!Types.ObjectId.isValid(item.rawMaterialId)) {
             throw new Error("Invalid raw material ID");
@@ -61,13 +86,14 @@ export const createPurchase = async (input: CreatePurchaseInput) => {
         ) {
             throw new Error("Invalid purchase quantity or cost");
         }
-    }
 
-    if (
-        purchasedBy &&
-        !Types.ObjectId.isValid(purchasedBy)
-    ) {
-        throw new Error("Invalid user ID");
+        if (seenMaterials.has(item.rawMaterialId)) {
+            throw new Error(
+                "A raw material can only appear once in a purchase"
+            );
+        }
+
+        seenMaterials.add(item.rawMaterialId);
     }
 
     const session = await mongoose.startSession();
@@ -85,7 +111,7 @@ export const createPurchase = async (input: CreatePurchaseInput) => {
                 throw new Error("Supplier not found or inactive");
             }
 
-            const purchaseItems = [];
+            const preparedItems: PreparedPurchaseItem[] = [];
             let itemsTotal = 0;
 
             for (const item of items) {
@@ -98,24 +124,30 @@ export const createPurchase = async (input: CreatePurchaseInput) => {
                     throw new Error("Raw material not found or inactive");
                 }
 
-                const subtotal =
-                    item.quantityGrams * item.costPerGram;
+                const subtotal = roundMoney(
+                    item.quantityGrams * item.costPerGram
+                );
 
                 itemsTotal += subtotal;
 
-                purchaseItems.push({
-                    rawMaterial: rawMaterial._id,
-                    materialName: rawMaterial.name,
+                preparedItems.push({
+                    rawMaterial,
                     quantityGrams: item.quantityGrams,
                     costPerGram: item.costPerGram,
                     subtotal,
                 });
             }
 
-            const totalAmount = itemsTotal + additionalCosts;
+            itemsTotal = roundMoney(itemsTotal);
+
+            const totalAmount = roundMoney(
+                itemsTotal + additionalCosts
+            );
 
             if (paidAmount > totalAmount) {
-                throw new Error("Paid amount cannot exceed purchase total");
+                throw new Error(
+                    "Paid amount cannot exceed purchase total"
+                );
             }
 
             const paymentStatus =
@@ -124,6 +156,51 @@ export const createPurchase = async (input: CreatePurchaseInput) => {
                     : paidAmount >= totalAmount
                         ? "PAID"
                         : "PARTIAL";
+
+            let allocatedSoFar = 0;
+
+            const purchaseItems = preparedItems.map((item, index) => {
+                let allocation: number;
+
+                if (index === preparedItems.length - 1) {
+                    allocation = roundMoney(
+                        additionalCosts - allocatedSoFar
+                    );
+                } else {
+                    const weight =
+                        itemsTotal > 0
+                            ? item.subtotal / itemsTotal
+                            : item.quantityGrams /
+                              preparedItems.reduce(
+                                  (sum, current) =>
+                                      sum + current.quantityGrams,
+                                  0
+                              );
+
+                    allocation = roundMoney(
+                        additionalCosts * weight
+                    );
+
+                    allocatedSoFar = roundMoney(
+                        allocatedSoFar + allocation
+                    );
+                }
+
+                const landedCostPerGram = roundCost(
+                    (item.subtotal + allocation) /
+                    item.quantityGrams
+                );
+
+                return {
+                    rawMaterial: item.rawMaterial._id,
+                    materialName: item.rawMaterial.name,
+                    quantityGrams: item.quantityGrams,
+                    costPerGram: item.costPerGram,
+                    subtotal: item.subtotal,
+                    allocatedAdditionalCosts: allocation,
+                    landedCostPerGram,
+                };
+            });
 
             const [purchase] = await Purchase.create(
                 [
@@ -142,20 +219,37 @@ export const createPurchase = async (input: CreatePurchaseInput) => {
                 { session }
             );
 
-            for (const item of purchaseItems) {
-                const rawMaterial = await RawMaterial.findById(
-                    item.rawMaterial
-                ).session(session);
-
-                if (!rawMaterial) {
-                    throw new Error("Raw material not found");
-                }
+            for (let index = 0; index < preparedItems.length; index++) {
+                const item = preparedItems[index];
+                const purchaseItem = purchaseItems[index];
+                const rawMaterial = item.rawMaterial;
 
                 const stockBefore = rawMaterial.stockGrams;
-                const stockAfter =
-                    stockBefore + item.quantityGrams;
+                const stockAfter = roundStock(
+                    stockBefore + item.quantityGrams
+                );
+
+                const oldAverageCost =
+                    rawMaterial.averageCostPerGram ?? 0;
+
+                if (stockBefore > 0 && oldAverageCost <= 0) {
+                    throw new Error(
+                        `Opening cost is missing for ${rawMaterial.name}. ` +
+                        "Set its existing stock cost before recording another purchase."
+                    );
+                }
+
+                const newAverageCost = roundCost(
+                    (
+                        stockBefore * oldAverageCost +
+                        item.quantityGrams *
+                            purchaseItem.landedCostPerGram
+                    ) / stockAfter
+                );
 
                 rawMaterial.stockGrams = stockAfter;
+                rawMaterial.averageCostPerGram = newAverageCost;
+
                 await rawMaterial.save({ session });
 
                 await RawMaterialMovement.create(
