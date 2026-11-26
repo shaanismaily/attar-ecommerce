@@ -6,14 +6,22 @@ export interface IProductionOutput {
     volumeMl: number;
     bottleCount: number;
     totalVolumeMl: number;
+    packagingCostPerBottle: number;
+    fragranceCostPerBottle: number;
+    totalCostPerBottle: number;
+    totalOutputCost: number;
 }
 
 export interface IProductionBatch {
     rawMaterial: mongoose.Types.ObjectId;
     materialName: string;
     densityGramsPerMl: number;
+    averageCostPerGramSnapshot: number;
     totalVolumeMl: number;
     consumedGrams: number;
+    totalFragranceCost: number;
+    totalPackagingCost: number;
+    totalProductionCost: number;
     outputs: IProductionOutput[];
     productionDate: Date;
     notes?: string;
@@ -38,15 +46,32 @@ const productionOutputSchema = new Schema<IProductionOutput>(
             type: Number,
             required: true,
             min: 1,
-            validate: {
-                validator: Number.isInteger,
-                message: "Bottle count must be a whole number",
-            },
+            validate: Number.isInteger,
         },
         totalVolumeMl: {
             type: Number,
             required: true,
             min: 0.001,
+        },
+        packagingCostPerBottle: {
+            type: Number,
+            required: true,
+            min: 0,
+        },
+        fragranceCostPerBottle: {
+            type: Number,
+            required: true,
+            min: 0,
+        },
+        totalCostPerBottle: {
+            type: Number,
+            required: true,
+            min: 0,
+        },
+        totalOutputCost: {
+            type: Number,
+            required: true,
+            min: 0,
         },
     },
     { _id: false }
@@ -69,6 +94,11 @@ const productionBatchSchema = new Schema<IProductionBatch>(
             required: true,
             min: 0.000001,
         },
+        averageCostPerGramSnapshot: {
+            type: Number,
+            required: true,
+            min: 0,
+        },
         totalVolumeMl: {
             type: Number,
             required: true,
@@ -78,6 +108,21 @@ const productionBatchSchema = new Schema<IProductionBatch>(
             type: Number,
             required: true,
             min: 0.001,
+        },
+        totalFragranceCost: {
+            type: Number,
+            required: true,
+            min: 0,
+        },
+        totalPackagingCost: {
+            type: Number,
+            required: true,
+            min: 0,
+        },
+        totalProductionCost: {
+            type: Number,
+            required: true,
+            min: 0,
         },
         outputs: {
             type: [productionOutputSchema],

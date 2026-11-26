@@ -1,345 +1,376 @@
 import mongoose, { Types } from "mongoose";
 import { randomBytes } from "node:crypto";
 
-import { Sale } from "../models/sale.model.js";
+import { Sale, type ISaleItem } from "../models/sale.model.js";
 import { Variant } from "../models/variant.model.js";
 import inventoryService from "./inventory.service.js";
 import { ApiError } from "../utils/ApiError.js";
 
 interface CreateSaleItemInput {
-    variantId: string;
-    quantity: number;
-    sellingPrice: number;
+  variantId: string;
+  quantity: number;
+  sellingPrice: number;
 }
 
 interface CreateSaleInput {
-    items: CreateSaleItemInput[];
-    paymentMethod: "CASH" | "UPI" | "CARD";
-    amountReceived: number;
-    customerName?: string;
-    customerPhone?: string;
-    notes?: string;
-    soldBy: string;
+  items: CreateSaleItemInput[];
+  paymentMethod: "CASH" | "UPI" | "CARD";
+  amountReceived: number;
+  customerName?: string;
+  customerPhone?: string;
+  notes?: string;
+  soldBy: string;
 }
 
 const validateMoney = (value: number, field: string) => {
-    if (
-        typeof value !== "number" ||
-        !Number.isFinite(value) ||
-        value < 0 ||
-        Math.round(value * 100) !== value * 100
-    ) {
-        throw new ApiError(
-            400,
-            `${field} must be a valid amount with up to 2 decimal places`
-        );
-    }
+  if (
+    typeof value !== "number" ||
+    !Number.isFinite(value) ||
+    value < 0 ||
+    Math.round(value * 100) !== value * 100
+  ) {
+    throw new ApiError(
+      400,
+      `${field} must be a valid amount with up to 2 decimal places`
+    );
+  }
 };
 
+const roundCost = (value: number) =>
+  Math.round((value + Number.EPSILON) * 10000) / 10000;
+
 const generateReceiptNumber = () => {
-    const date = new Date();
-    const datePart = [
-        date.getFullYear(),
-        String(date.getMonth() + 1).padStart(2, "0"),
-        String(date.getDate()).padStart(2, "0"),
-    ].join("");
+  const date = new Date();
 
-    const randomPart = randomBytes(3).toString("hex").toUpperCase();
+  const datePart = [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("");
 
-    return `SH-${datePart}-${randomPart}`;
+  const randomPart = randomBytes(3).toString("hex").toUpperCase();
+
+  return `SH-${datePart}-${randomPart}`;
 };
 
 export const createSale = async (input: CreateSaleInput) => {
-    const {
-        items,
-        paymentMethod,
-        amountReceived,
-        customerName,
-        customerPhone,
-        notes,
-        soldBy,
-    } = input;
+  const {
+    items,
+    paymentMethod,
+    amountReceived,
+    customerName,
+    customerPhone,
+    notes,
+    soldBy,
+  } = input;
 
-    if (!Types.ObjectId.isValid(soldBy)) {
-        throw new ApiError(400, "Invalid staff/user ID");
+  if (!Types.ObjectId.isValid(soldBy)) {
+    throw new ApiError(400, "Invalid staff/user ID");
+  }
+
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new ApiError(400, "At least one sale item is required");
+  }
+
+  if (!["CASH", "UPI", "CARD"].includes(paymentMethod)) {
+    throw new ApiError(400, "Invalid payment method");
+  }
+
+  validateMoney(amountReceived, "Amount received");
+
+  const seenVariants = new Set<string>();
+
+  for (const item of items) {
+    if (!Types.ObjectId.isValid(item.variantId)) {
+      throw new ApiError(400, "Invalid variant ID");
     }
 
-    if (!Array.isArray(items) || items.length === 0) {
-        throw new ApiError(400, "At least one sale item is required");
+    if (!Number.isInteger(item.quantity) || item.quantity < 1) {
+      throw new ApiError(400, "Invalid item quantity");
     }
 
-    if (!["CASH", "UPI", "CARD"].includes(paymentMethod)) {
-        throw new ApiError(400, "Invalid payment method");
+    validateMoney(item.sellingPrice, "Selling price");
+
+    if (item.sellingPrice <= 0) {
+      throw new ApiError(400, "Selling price must be greater than zero");
     }
 
-    validateMoney(amountReceived, "Amount received");
+    if (seenVariants.has(item.variantId)) {
+      throw new ApiError(
+        400,
+        "Duplicate variants are not allowed. Combine their quantities."
+      );
+    }
 
-    const seenVariants = new Set<string>();
+    seenVariants.add(item.variantId);
+  }
 
-    for (const item of items) {
-        if (!Types.ObjectId.isValid(item.variantId)) {
-            throw new ApiError(400, "Invalid variant ID");
+  if (customerName !== undefined && typeof customerName !== "string") {
+    throw new ApiError(400, "Invalid customer name");
+  }
+
+  if (customerPhone !== undefined && typeof customerPhone !== "string") {
+    throw new ApiError(400, "Invalid customer phone");
+  }
+
+  const session = await mongoose.startSession();
+
+  try {
+    let createdSale: any;
+
+    await session.withTransaction(async () => {
+      const saleItems: ISaleItem[] = [];
+
+      let totalPaise = 0;
+      let totalCostPaise = 0;
+
+      for (const item of items) {
+        const variant = await Variant.findById(item.variantId)
+          .populate("product", "name")
+          .session(session);
+
+        if (!variant) {
+          throw new ApiError(404, "Product variant not found");
         }
 
-        if (
-            !Number.isInteger(item.quantity) ||
-            item.quantity < 1
-        ) {
-            throw new ApiError(400, "Invalid item quantity");
+        if (!variant.isAvailable) {
+          throw new ApiError(
+            400,
+            `${variant.volume} ml variant is unavailable`
+          );
         }
 
-        validateMoney(item.sellingPrice, "Selling price");
+        const product = variant.product as any;
 
-        if (item.sellingPrice <= 0) {
-            throw new ApiError(400, "Selling price must be greater than zero");
+        if (!product || !product.name) {
+          throw new ApiError(404, "Associated product not found");
         }
 
-        if (seenVariants.has(item.variantId)) {
-            throw new ApiError(
-                400,
-                "Duplicate variants are not allowed. Combine their quantities."
-            );
+        const listedPrice = Number(variant.price);
+
+        validateMoney(listedPrice, "Listed price");
+
+        // Capture the weighted-average bottle cost BEFORE deducting inventory.
+        const unitCost = Number(variant.averageCostPerUnit);
+
+        if (!Number.isFinite(unitCost) || unitCost <= 0) {
+          throw new ApiError(
+            409,
+            `Cannot sell ${product.name} (${variant.volume} ml): ` +
+              "its average cost is missing or zero. " +
+              "Initialize its opening inventory valuation first."
+          );
         }
 
-        seenVariants.add(item.variantId);
-    }
+        const roundedUnitCost = roundCost(unitCost);
 
-    if (customerName !== undefined && typeof customerName !== "string") {
-        throw new ApiError(400, "Invalid customer name");
-    }
+        const itemSubtotalPaise =
+          Math.round(item.sellingPrice * 100) * item.quantity;
 
-    if (customerPhone !== undefined && typeof customerPhone !== "string") {
-        throw new ApiError(400, "Invalid customer phone");
-    }
+        const itemTotalCostPaise = Math.round(
+          roundedUnitCost * item.quantity * 100
+        );
 
-    const session = await mongoose.startSession();
+        const itemGrossProfitPaise = itemSubtotalPaise - itemTotalCostPaise;
 
-    try {
-        let createdSale: any;
+        totalPaise += itemSubtotalPaise;
+        totalCostPaise += itemTotalCostPaise;
 
-        await session.withTransaction(async () => {
-            const saleItems = [];
-            let totalPaise = 0;
+        saleItems.push({
+          product: product._id,
+          variant: variant._id,
+          productName: product.name,
+          volume: variant.volume,
+          listedPrice,
+          sellingPrice: item.sellingPrice,
+          quantity: item.quantity,
+          subtotal: itemSubtotalPaise / 100,
 
-            for (const item of items) {
-                const variant = await Variant.findById(item.variantId)
-                    .populate("product", "name")
-                    .session(session);
-
-                if (!variant) {
-                    throw new ApiError(404, "Product variant not found");
-                }
-
-                if (!variant.isAvailable) {
-                    throw new ApiError(
-                        400,
-                        `${variant.volume} ml variant is unavailable`
-                    );
-                }
-
-                const product = variant.product as any;
-
-                if (!product || !product.name) {
-                    throw new ApiError(404, "Associated product not found");
-                }
-
-                const listedPrice = Number(variant.price);
-
-                validateMoney(listedPrice, "Listed price");
-
-                const itemSubtotalPaise =
-                    Math.round(item.sellingPrice * 100) *
-                    item.quantity;
-
-                totalPaise += itemSubtotalPaise;
-
-                saleItems.push({
-                    product: product._id,
-                    variant: variant._id,
-                    productName: product.name,
-                    volume: variant.volume,
-                    listedPrice,
-                    sellingPrice: item.sellingPrice,
-                    quantity: item.quantity,
-                    subtotal: itemSubtotalPaise / 100,
-                });
-            }
-
-            const totalAmount = totalPaise / 100;
-
-            if (amountReceived < totalAmount) {
-                throw new ApiError(
-                    400,
-                    "Amount received cannot be less than the sale total"
-                );
-            }
-
-            if (
-                paymentMethod !== "CASH" &&
-                amountReceived !== totalAmount
-            ) {
-                throw new ApiError(
-                    400,
-                    "UPI and card payments must match the exact sale total"
-                );
-            }
-
-            const changeReturned =
-                paymentMethod === "CASH"
-                    ? (Math.round(amountReceived * 100) - totalPaise) / 100
-                    : 0;
-
-            const [sale] = await Sale.create(
-                [
-                    {
-                        receiptNumber: generateReceiptNumber(),
-                        items: saleItems,
-                        subtotal: totalAmount,
-                        totalAmount,
-                        paymentMethod,
-                        amountReceived,
-                        changeReturned,
-                        customerName: customerName?.trim(),
-                        customerPhone: customerPhone?.trim(),
-                        notes: notes?.trim(),
-                        soldBy: new Types.ObjectId(soldBy),
-                    },
-                ],
-                { session }
-            );
-
-            // Deduct inventory and create stock movement records.
-            for (const item of items) {
-                try {
-                    await inventoryService.removeStock(
-                        {
-                            variantId: item.variantId,
-                            quantity: item.quantity,
-                            movementType: "POS_SALE",
-                            referenceType: "SALE",
-                            referenceId: sale._id.toString(),
-                            performedBy: soldBy,
-                            note: `POS sale ${sale.receiptNumber}`,
-                        },
-                        session
-                    );
-                } catch (error) {
-                    throw new ApiError(
-                        409,
-                        error instanceof Error
-                            ? error.message
-                            : "Unable to update inventory"
-                    );
-                }
-            }
-
-            createdSale = sale;
+          // Cost snapshot
+          unitCost: roundedUnitCost,
+          totalCost: itemTotalCostPaise / 100,
+          grossProfit: itemGrossProfitPaise / 100,
         });
+      }
 
-        return createdSale;
-    } finally {
-        await session.endSession();
-    }
+      const totalAmount = totalPaise / 100;
+      const totalCost = totalCostPaise / 100;
+
+      const grossProfitPaise = totalPaise - totalCostPaise;
+
+      const grossProfit = grossProfitPaise / 100;
+
+      if (amountReceived < totalAmount) {
+        throw new ApiError(
+          400,
+          "Amount received cannot be less than the sale total"
+        );
+      }
+
+      if (paymentMethod !== "CASH" && amountReceived !== totalAmount) {
+        throw new ApiError(
+          400,
+          "UPI and card payments must match the exact sale total"
+        );
+      }
+
+      const changeReturned =
+        paymentMethod === "CASH"
+          ? (Math.round(amountReceived * 100) - totalPaise) / 100
+          : 0;
+
+      const [sale] = await Sale.create(
+        [
+          {
+            receiptNumber: generateReceiptNumber(),
+            items: saleItems,
+            subtotal: totalAmount,
+            totalAmount,
+
+            // Costing information
+            totalCost,
+            grossProfit,
+
+            paymentMethod,
+            amountReceived,
+            changeReturned,
+            customerName: customerName?.trim(),
+            customerPhone: customerPhone?.trim(),
+            notes: notes?.trim(),
+            soldBy: new Types.ObjectId(soldBy),
+          },
+        ],
+        { session }
+      );
+
+      // Deduct inventory and create stock movement records.
+      for (const item of items) {
+        try {
+          await inventoryService.removeStock(
+            {
+              variantId: item.variantId,
+              quantity: item.quantity,
+              movementType: "POS_SALE",
+              referenceType: "SALE",
+              referenceId: sale._id.toString(),
+              performedBy: soldBy,
+              note: `POS sale ${sale.receiptNumber}`,
+            },
+            session
+          );
+        } catch (error) {
+          throw new ApiError(
+            409,
+            error instanceof Error
+              ? error.message
+              : "Unable to update inventory"
+          );
+        }
+      }
+
+      createdSale = sale;
+    });
+
+    return createdSale;
+  } finally {
+    await session.endSession();
+  }
 };
 
 export const getAllSales = async ({
-    page = 1,
-    limit = 20,
-    startDate,
-    endDate,
-    customerPhone,
+  page = 1,
+  limit = 20,
+  startDate,
+  endDate,
+  customerPhone,
 }: {
-    page?: number;
-    limit?: number;
-    startDate?: string;
-    endDate?: string;
-    customerPhone?: string;
+  page?: number;
+  limit?: number;
+  startDate?: string;
+  endDate?: string;
+  customerPhone?: string;
 }) => {
-    if (
-        !Number.isInteger(page) ||
-        page < 1 ||
-        !Number.isInteger(limit) ||
-        limit < 1 ||
-        limit > 100
-    ) {
-        throw new ApiError(400, "Invalid pagination values");
+  if (
+    !Number.isInteger(page) ||
+    page < 1 ||
+    !Number.isInteger(limit) ||
+    limit < 1 ||
+    limit > 100
+  ) {
+    throw new ApiError(400, "Invalid pagination values");
+  }
+
+  const filter: Record<string, any> = {};
+
+  if (startDate || endDate) {
+    filter.createdAt = {};
+
+    if (startDate) {
+      const start = new Date(startDate);
+
+      if (Number.isNaN(start.getTime())) {
+        throw new ApiError(400, "Invalid start date");
+      }
+
+      filter.createdAt.$gte = start;
     }
 
-    const filter: Record<string, any> = {};
+    if (endDate) {
+      const end = new Date(endDate);
 
-    if (startDate || endDate) {
-        filter.createdAt = {};
+      if (Number.isNaN(end.getTime())) {
+        throw new ApiError(400, "Invalid end date");
+      }
 
-        if (startDate) {
-            const start = new Date(startDate);
-
-            if (Number.isNaN(start.getTime())) {
-                throw new ApiError(400, "Invalid start date");
-            }
-
-            filter.createdAt.$gte = start;
-        }
-
-        if (endDate) {
-            const end = new Date(endDate);
-
-            if (Number.isNaN(end.getTime())) {
-                throw new ApiError(400, "Invalid end date");
-            }
-
-            filter.createdAt.$lte = end;
-        }
-
-        if (
-            startDate &&
-            endDate &&
-            new Date(startDate) > new Date(endDate)
-        ) {
-            throw new ApiError(400, "Start date cannot be after end date");
-        }
+      filter.createdAt.$lte = end;
     }
 
-    if (customerPhone) {
-        filter.customerPhone = customerPhone.trim();
+    if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+      throw new ApiError(400, "Start date cannot be after end date");
     }
+  }
 
-    const skip = (page - 1) * limit;
+  if (customerPhone) {
+    filter.customerPhone = customerPhone.trim();
+  }
 
-    const [sales, totalSales] = await Promise.all([
-        Sale.find(filter)
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .populate("soldBy", "name email")
-            .lean(),
+  const skip = (page - 1) * limit;
 
-        Sale.countDocuments(filter),
-    ]);
+  const [sales, totalSales] = await Promise.all([
+    Sale.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("soldBy", "name email")
+      .lean(),
 
-    return {
-        sales,
-        pagination: {
-            currentPage: page,
-            totalPages: Math.ceil(totalSales / limit),
-            totalSales,
-            limit,
-        },
-    };
+    Sale.countDocuments(filter),
+  ]);
+
+  return {
+    sales,
+    pagination: {
+      currentPage: page,
+      totalPages: Math.ceil(totalSales / limit),
+      totalSales,
+      limit,
+    },
+  };
 };
 
 export const getSaleById = async (saleId: string) => {
-    if (!Types.ObjectId.isValid(saleId)) {
-        throw new ApiError(400, "Invalid sale ID");
-    }
+  if (!Types.ObjectId.isValid(saleId)) {
+    throw new ApiError(400, "Invalid sale ID");
+  }
 
-    const sale = await Sale.findById(saleId)
-        .populate("soldBy", "name email")
-        .populate("items.product", "name slug")
-        .populate("items.variant", "volume price");
+  const sale = await Sale.findById(saleId)
+    .populate("soldBy", "name email")
+    .populate("items.product", "name slug")
+    .populate("items.variant", "volume price");
 
-    if (!sale) {
-        throw new ApiError(404, "Sale not found");
-    }
+  if (!sale) {
+    throw new ApiError(404, "Sale not found");
+  }
 
-    return sale;
+  return sale;
 };

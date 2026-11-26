@@ -8,6 +8,7 @@ interface IVariant {
     price: number;
     stock: number;
     isAvailable: boolean;
+    averageCostPerUnit: number;
 
     createdAt?: Date;
     updatedAt?: Date;
@@ -38,7 +39,12 @@ const variantSchema = new Schema<IVariant, Model<IVariant>>({
     isAvailable: {
         type: Boolean,
         default: true
-    }
+    },
+    averageCostPerUnit: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
 }, { timestamps: true });
 
 variantSchema.index(
